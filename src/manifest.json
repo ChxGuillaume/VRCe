@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "VRC Api Visualizer",
+  "homepage_url": "http://localhost:8080/",
+  "description": "A Visualisation Chrome Extension for VRChat API",
+  "default_locale": "en",
+  "permissions": [
+    "https://vrchat.com/"
+  ],
+  "icons": {
+    "16": "icons/vrc_logo-16_x_16.png",
+    "48": "icons/vrc_logo-48_x_48.png",
+    "128": "icons/vrc_logo-128_x_128.png"
+  },
+  "background": {
+    "scripts": [
+      "js/background.js"
+    ],
+    "persistent": false
+  },
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "VRC Api Visualizer",
+    "default_icon": {
+      "19": "icons/vrc_logo-19_x_19.png",
+      "38": "icons/vrc_logo-38_x_38.png"
+    }
+  }
+}
