@@ -1,51 +1,48 @@
 <template>
   <div>
-    <v-simple-table>
-      <template v-slot:default>
-        <thead>
-        <tr>
-          <th class="text-left">
-            User
-          </th>
-          <th class="text-left">
-            Type
-          </th>
-          <th class="text-left">
-            Date
-          </th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr
-            v-for="item in playerModerationOrdered"
-            :key="item.name"
-        >
-          <td>{{ item.targetDisplayName }}</td>
-          <td>
-            <v-tooltip v-if="item.icon" right color="primary">
-              <template v-slot:activator="{on, attrs}">
-                <v-icon v-bind="attrs" v-on="on">{{ item.icon }}</v-icon>
-              </template>
-              <span>{{ item.icon_text }}</span>
-            </v-tooltip>
-            <span v-else>{{ item.type }}</span>
-          </td>
-          <td>{{ item.created }}</td>
-        </tr>
-        </tbody>
+    <v-data-table
+        :items="player_moderation"
+        :headers="player_moderation_headers"
+        :items-per-page="-1"
+        sort-by="created"
+        sort-desc
+        group-by="type"
+        show-group-by
+        height="85vh"
+    >
+      <template v-slot:group.header="{ group, items, toggle }">
+        <td class="ma-2" @click="toggle" style="cursor: pointer">
+          Type: <v-icon>{{ items.find(e => e.type === group).icon }}</v-icon>
+          {{ group }} ({{ items.length }} / {{ player_moderation.length }})
+        </td>
+        <td></td>
       </template>
-    </v-simple-table>
+      <template v-slot:item.targetDisplayName="{ item }">
+        <a @click="$refs.userDetails.fetchUser(item.targetUserId)">
+          {{ item.targetDisplayName }}
+        </a>
+      </template>
+    </v-data-table>
+
+    <user-details ref="userDetails"/>
   </div>
 </template>
 
 <script>
-import * as moment from "moment";
+import * as moment from 'moment';
+import UserDetails from "./UserDetails";
 
 export default {
-  name: "PlayerModerationTab",
+  name: 'PlayerModerationTab',
+  components: {UserDetails},
   data() {
     return {
       player_moderation: [],
+      player_moderation_headers: [
+        {text: 'User', align: 'start', value: 'targetDisplayName', groupable: false},
+        {text: 'Type', align: 'start', value: 'type'},
+        {text: 'Date', align: 'start', value: 'created', groupable: false},
+      ],
     }
   },
   computed: {
@@ -61,9 +58,11 @@ export default {
       fetch('https://vrchat.com/api/1/auth/user/playermoderations')
           .then(res => res.json())
           .then(data => {
-            data.forEach(e => this.updateRow(e));
-            console.log(data);
-            this.player_moderation = data;
+            if (!data.error) {
+              data.forEach(e => this.updateRow(e));
+              console.log(data);
+              this.player_moderation = data;
+            }
           })
     },
     updateRow(row) {

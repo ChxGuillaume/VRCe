@@ -15,7 +15,7 @@
       <span>Disconnect From VRChat Home</span>
     </v-tooltip>
 
-    <v-tabs class="mt-16" centered :value="2" background-color="transparent" slider-color="transparent">
+    <v-tabs class="mt-16" centered background-color="transparent" slider-color="transparent">
       <v-tab>
         <v-icon left>
           people
@@ -38,29 +38,6 @@
       <v-tab-item class="pt-3">
         <v-row class="text-center" v-if="friends.length">
           <v-col cols="12">
-            <div v-if="user_data.userIcon" class="d-inline-block rounded pa-1 mx-2"
-                 :style="{ background: user_data.rank ? user_data.rank.color : '' }">
-              <v-img
-                  :src="user_data.userIcon"
-                  class="rounded"
-                  contain
-                  width="150"
-                  height="150"
-              />
-            </div>
-            <div class="d-inline-block rounded pa-1 mx-2"
-                 :style="{ background: user_data.rank ? user_data.rank.color : '' }">
-              <v-img
-                  :src="user_data.currentAvatarThumbnailImageUrl"
-                  class="rounded"
-                  contain
-                  width="200"
-                  min-height="150"
-              />
-            </div>
-            <h1 class="mt-2">{{ user_data.displayName }}</h1>
-          </v-col>
-          <v-col cols="12">
             <v-chip
                 v-for="rank in ranksStats"
                 :key="rank.name"
@@ -72,7 +49,7 @@
             </v-chip>
           </v-col>
           <v-col cols="12">
-            <v-card>
+            <v-card :loading="isLoading">
               <v-card-title>
                 <v-select
                     v-model="friends_shown_headers"
@@ -108,6 +85,10 @@
                   </template>
                 </v-select>
                 <v-spacer/>
+                <div v-if="isLoading">
+                  <span>{{ friends.length }} / {{ user_data.friends.length}}</span>
+                </div>
+                <v-spacer/>
                 <v-text-field
                     v-model="friends_search"
                     label="Search"
@@ -117,13 +98,13 @@
                   v-if="show_table"
                   :items="friends"
                   :headers="friendsHeaders"
-                  :items-per-page="10"
+                  :items-per-page="25"
                   :search="friends_search"
                   :footer-props="{
                 'items-per-page-options': [10, 25, 50, 100, -1]
               }"
                   sort-by="state.power"
-                  height="60vh"
+                  height="73vh"
               >
                 <template v-slot:item.worldId="{ item: { worldId } }">
                   <v-img
@@ -187,6 +168,9 @@
                     {{ rank.name }}
                   </v-chip>
                 </template>
+                <template v-slot:item.languages="{ item: { languages } }">
+                  {{ languages.join(', ') }}
+                </template>
                 <template v-slot:item.tags="{ item }">
                   <v-chip
                       v-for="tag in item.tags"
@@ -220,41 +204,6 @@
             </v-card>
           </v-col>
         </v-row>
-        <v-dialog
-            v-model="need_login_form"
-            transition="dialog-bottom-transition"
-            max-width="600"
-            persistent
-        >
-          <template v-slot:default>
-            <v-card>
-              <v-card-title class="text-h5 red lighten-1">
-                Not Logged In
-              </v-card-title>
-
-              <v-card-text class="pt-3">
-                You are actually disconnected from VRChat Home you need to login here:
-                <br><br>
-                <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home/login</a>
-                <br><br>
-                When you're done please click the button below.
-              </v-card-text>
-
-              <v-divider/>
-
-              <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn
-                    color="green"
-                    text
-                    @click="fetchUser"
-                >
-                  I'm now connected
-                </v-btn>
-              </v-card-actions>
-            </v-card>
-          </template>
-        </v-dialog>
       </v-tab-item>
       <v-tab-item class="pt-3">
         <PlayerModerationTab/>
@@ -263,6 +212,41 @@
         <PersonalInfosTab :user_data="user_data"/>
       </v-tab-item>
     </v-tabs>
+    <v-dialog
+        v-model="need_login_form"
+        transition="dialog-bottom-transition"
+        max-width="600"
+        persistent
+    >
+      <template v-slot:default>
+        <v-card>
+          <v-card-title class="text-h5 red lighten-1">
+            Not Logged In
+          </v-card-title>
+
+          <v-card-text class="pt-3">
+            You are actually disconnected from VRChat Home you need to login here:
+            <br><br>
+            <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home/login</a>
+            <br><br>
+            When you're done please click the button below.
+          </v-card-text>
+
+          <v-divider/>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn
+                color="green"
+                text
+                @click="fetchUser"
+            >
+              I'm now connected
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </template>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -292,6 +276,7 @@ export default {
       {text: 'Status', value: 'status.power'},
       {text: 'Status Description', value: 'statusDescription'},
       {text: 'Rank', value: 'rank.power'},
+      {text: 'Languages', value: 'languages'},
       {text: 'Tags', value: 'tags'},
       {text: 'Tags Length', value: 'tags.length'},
       {text: 'Bio', value: 'bio'},
@@ -332,6 +317,9 @@ export default {
     },
     friendsHeaders() {
       return this.friends_headers.filter(e => this.friends_shown_headers.includes(e.text))
+    },
+    isLoading() {
+      return !this.user_data.id || this.friends.length < this.user_data.friends.length;
     }
   },
   mounted() {
@@ -351,6 +339,9 @@ export default {
             if (!data.error) {
               this.setUserData(data);
               this.user_data = data;
+
+              console.log(this.user_data)
+
               this.fetchFriends();
             } else if (data.error.status_code === 401) {
               this.need_login_form = true;
@@ -385,12 +376,32 @@ export default {
           })
     },
     setUserData(user) {
+      this.setRank(user);
       this.setState(user);
       this.setStatus(user);
-      this.setRank(user);
       this.setBioLinks(user);
+      this.setLanguages(user);
       this.setLastLogin(user);
       this.setLastPlatform(user);
+    },
+    setRank(user) {
+      const tags = user.tags
+
+      if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
+        user.rank = {color: '#FF69B4', name: 'Legend', power: 0}
+      } else if (tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
+        user.rank = {color: '#5D88BB', name: 'Veteran', power: 1}
+      } else if (tags.includes('system_trust_veteran') && tags.includes('system_trust_trusted')) {
+        user.rank = {color: '#8143E6', name: 'Trusted', power: 2}
+      } else if (tags.includes('system_trust_trusted')) {
+        user.rank = {color: '#FF7B42', name: 'Known', power: 3}
+      } else if (tags.includes('system_trust_known')) {
+        user.rank = {color: '#2BCF5C', name: 'User', power: 4}
+      } else if (tags.includes('system_trust_basic')) {
+        user.rank = {color: '#1778FF', name: 'New User', power: 5}
+      } else {
+        user.rank = {color: '#CCCCCC', name: 'Visitor', power: 6}
+      }
     },
     setState(user) {
       switch (user.state) {
@@ -425,27 +436,11 @@ export default {
           user.status = {color: '#CCCCCC', name: user.status, power: 0};
       }
     },
-    setRank(user) {
-      const tags = user.tags
-
-      if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF69B4', name: 'Legend', power: 0}
-      } else if (tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#5D88BB', name: 'Veteran', power: 1}
-      } else if (tags.includes('system_trust_veteran') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#8143E6', name: 'Trusted', power: 2}
-      } else if (tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF7B42', name: 'Known', power: 3}
-      } else if (tags.includes('system_trust_known')) {
-        user.rank = {color: '#2BCF5C', name: 'User', power: 4}
-      } else if (tags.includes('system_trust_basic')) {
-        user.rank = {color: '#1778FF', name: 'New User', power: 5}
-      } else {
-        user.rank = {color: '#CCCCCC', name: 'Visitor', power: 6}
-      }
-    },
     setBioLinks(user) {
       user.bioLinks = user.bioLinks.filter(e => e);
+    },
+    setLanguages(user) {
+      user.languages = user.tags.filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
     },
     setLastLogin(user) {
       user.last_login = moment(user.last_login).format('YYYY-MM-DD HH:mm:ss');

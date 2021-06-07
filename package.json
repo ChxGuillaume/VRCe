@@ -1,6 +1,6 @@
 {
   "name": "vrc_api_ext",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service build --mode development --watch",
