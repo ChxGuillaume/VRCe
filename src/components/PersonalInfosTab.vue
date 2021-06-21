@@ -83,7 +83,9 @@
     </v-col>
     <v-col cols="6" class="px-16">
       <h2>Bio:</h2>
-      {{ user_data.bio || '(No Bio)' }}
+      <p class="text-pre-wrap">
+        {{ user_data.bio || '(No Bio)' }}
+      </p>
     </v-col>
     <v-col cols="4" class="px-16">
       <h2>Status:</h2>

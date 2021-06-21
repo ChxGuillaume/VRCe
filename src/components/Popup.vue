@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid>
+  <v-container fluid class="pb-0">
     <v-tooltip v-if="logged_in" right>
       <template v-slot:activator="{ on, attrs }">
         <v-btn
@@ -91,7 +91,7 @@
       </v-tooltip>
     </v-speed-dial>
 
-    <v-row>
+    <v-row style="margin-bottom: 56px;">
       <v-col v-if="hasUserData" cols="12" class="text-center pb-0">
         <div class="d-inline-block rounded pa-1 mx-2"
              :style="{ background: user_data.rank ? user_data.rank.color : '' }">
@@ -107,55 +107,75 @@
       <v-col v-else-if="!fetching" cols="12" class="text-center">
         <h1 class="mt-2">Logged Off</h1>
       </v-col>
-      <v-col v-if="hasUserData" cols="12" class="d-flex align-center justify-space-around my-1 py-1">
-        <h3>Friends:</h3>
-        <v-spacer/>
-        <v-text-field v-model="friend_search" class="mt-0" label="Search" hide-details solo clearable/>
-      </v-col>
-      <v-col v-if="friends.length" cols="12" class="text-center pa-0">
-        <v-card
-            class="mx-auto overflow-y-auto"
-            max-width="400"
-            height="375"
-            tile
-        >
-          <v-list-item
-              v-for="friend of sortedFriends"
-              :key="friend.id"
-              class="pl-0"
-              :style="{ background: friend.status.color + '33' }"
-              @click="fetchFriendDetails($event, friend.id)"
-          >
-            <v-img :src="friend.currentAvatarThumbnailImageUrl" max-width="100" height="75"/>
+      <v-col cols="12" class="pa-0">
+        <v-tabs-items v-model="bottom_navigator" style="background-color: transparent">
+          <v-tab-item value="friends">
+            <v-row class="mx-0">
+              <v-col v-if="hasUserData" class="d-flex align-center justify-space-around my-2">
+                <v-text-field
+                    v-model="friend_search"
+                    background-color="grey darken-3"
+                    class="mt-0"
+                    label="Search"
+                    hide-details
+                    clearable
+                    solo
+                />
+              </v-col>
+            </v-row>
 
-            <v-list-item-content>
-              <v-row>
-                <v-col>
-                  <v-list-item-title>{{ friend.displayName }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ friend.status.name }}</v-list-item-subtitle>
-                </v-col>
-                <v-col cols="3" class="d-flex align-center justify-end">
-                  <v-tooltip left color="grey darken-2">
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn
-                          v-if="friend.world_link"
-                          v-bind="attrs"
-                          v-on="on"
-                          :href="friend.world_link"
-                          target="_blank"
-                          icon
-                      >
-                        <v-icon>{{ friend.world_icon }}</v-icon>
-                      </v-btn>
-                      <v-icon v-else style="margin-right: 6px">{{ friend.world_icon }}</v-icon>
-                    </template>
-                    <span>Join</span>
-                  </v-tooltip>
-                </v-col>
-              </v-row>
-            </v-list-item-content>
-          </v-list-item>
-        </v-card>
+            <v-card
+                class="mx-auto overflow-y-auto"
+                color="transparent"
+                max-width="400"
+                height="320"
+                tile
+            >
+              <v-list-item
+                  v-for="friend of sortedFriends"
+                  :key="friend.id"
+                  class="pl-0"
+                  :style="{ background: friend.status.color + '33' }"
+                  @click="fetchFriendDetails($event, friend.id)"
+              >
+                <v-img :src="friend.currentAvatarThumbnailImageUrl" max-width="100" height="75"/>
+
+                <v-list-item-content>
+                  <v-row class="mx-0 align-center">
+                    <v-col cols="9" class="text-center">
+                      <h3>{{ friend.displayName }}</h3>
+                      <h4 class="mt-2">{{ friend.status.name }}</h4>
+                    </v-col>
+                    <v-col cols="3" class="d-flex align-center justify-end">
+                      <v-tooltip left color="grey darken-2">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-btn
+                              v-if="friend.world_link"
+                              v-bind="attrs"
+                              v-on="on"
+                              :href="friend.world_link"
+                              target="_blank"
+                              icon
+                          >
+                            <v-icon>{{ friend.world_icon }}</v-icon>
+                          </v-btn>
+                          <v-icon v-else style="margin-right: 6px">{{ friend.world_icon }}</v-icon>
+                        </template>
+                        <span>Join</span>
+                      </v-tooltip>
+                    </v-col>
+                  </v-row>
+                </v-list-item-content>
+              </v-list-item>
+            </v-card>
+          </v-tab-item>
+          <v-tab-item value="events">
+            <events-tab :friends="friends"/>
+          </v-tab-item>
+          <v-tab-item value="settings">
+            <settings-tab/>
+          </v-tab-item>
+        </v-tabs-items>
       </v-col>
     </v-row>
 
@@ -224,7 +244,9 @@
             </v-col>
             <v-col cols="12">
               <h4>Bio:</h4>
-              <span class="caption">{{ friend_details.bio || '(No Bio)' }}</span>
+              <span class="caption text-pre-wrap">
+                {{ friend_details.bio || '(No Bio)' }}
+              </span>
             </v-col>
             <v-col cols="12" v-if="friend_details.bioLinks && friend_details.bioLinks.length">
               <h4>Bio Links:</h4>
@@ -356,14 +378,43 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-bottom-navigation v-model="bottom_navigator" shift fixed grow color="primary">
+      <v-btn height="100%" value="friends" color="transparent">
+        <span>Friends</span>
+
+        <v-icon>people</v-icon>
+      </v-btn>
+
+      <v-btn height="100%" value="worlds" color="transparent" disabled>
+        <span>Worlds</span>
+
+        <v-icon>public</v-icon>
+      </v-btn>
+
+      <v-btn height="100%" value="events" color="transparent">
+        <span>Events</span>
+
+        <v-icon>history</v-icon>
+      </v-btn>
+
+      <v-btn height="100%" value="settings" color="transparent">
+        <span>Settings</span>
+
+        <v-icon>settings</v-icon>
+      </v-btn>
+    </v-bottom-navigation>
   </v-container>
 </template>
 
 <script>
 import * as moment from "moment";
+import EventsTab from "./EventsTab";
+import SettingsTab from "./SettingsTab";
 
 export default {
   name: 'Popup',
+  components: {SettingsTab, EventsTab},
   data() {
     return {
       toolbox: false,
@@ -374,7 +425,8 @@ export default {
       friend_search: '',
       friend_details: {},
       drawer: false,
-      no_session_dialog: false
+      no_session_dialog: false,
+      bottom_navigator: 'friends'
     }
   },
   computed: {
@@ -403,6 +455,10 @@ export default {
   },
   mounted() {
     this.fetchUser();
+
+    this.port = chrome.extension.connect({
+      name: 'popup-app'
+    });
   },
   methods: {
     fetchUser() {
@@ -412,7 +468,6 @@ export default {
           .then(response => response.json())
           .then(data => {
             this.fetching = false;
-            console.log(data)
 
             if (!data.error) {
               this.logged_in = true;

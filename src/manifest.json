@@ -5,6 +5,8 @@
   "description": "A Visualisation Chrome Extension for VRChat API",
   "default_locale": "en",
   "permissions": [
+    "cookies",
+    "notifications",
     "https://vrchat.com/"
   ],
   "icons": {
@@ -13,10 +15,7 @@
     "128": "icons/vrc_logo-128_x_128.png"
   },
   "background": {
-    "scripts": [
-      "js/background.js"
-    ],
-    "persistent": false
+    "scripts": ["js/background.js"]
   },
   "browser_action": {
     "default_popup": "popup.html",

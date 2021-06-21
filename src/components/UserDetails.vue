@@ -78,7 +78,9 @@
           </v-col>
           <v-col cols="12">
             <h4>Bio:</h4>
-            <span class="caption">{{ friend.bio || '(No Bio)' }}</span>
+            <span class="caption text-pre-wrap">
+              {{ friend.bio || '(No Bio)' }}
+            </span>
           </v-col>
           <v-col cols="12" v-if="friend.bioLinks && friend.bioLinks.length">
             <h4>Bio Links:</h4>
