@@ -13,6 +13,17 @@
           <template v-slot:selection="{ index }">
             <v-icon v-if="index === 0">playlist_add_check</v-icon>
           </template>
+          <template v-slot:item="{ item }">
+            <v-card width="100%" class="d-flex align-center justify-space-between" color="transparent" flat>
+              <v-simple-checkbox
+                  :value="event_types_shown.includes(item.value)"
+              />
+              {{ item.text }}
+              <v-icon right :color="getBackgroundColor(item.value)">
+                adjust
+              </v-icon>
+            </v-card>
+          </template>
         </v-select>
         <v-spacer/>
         <v-text-field
@@ -34,8 +45,8 @@
           v-for="[index, event] of filteredEvents.entries()"
           :key="index"
           class="pl-0 d-flex align-center"
-          :class="getBackgroundColor(event.type)"
           style="height: 75px;"
+          :style="{ background: getBackgroundColor(event.type) + '44' }"
       >
         <v-img
             v-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type) && event.content.user"
@@ -81,34 +92,11 @@
             <v-col cols="9" class="text-center">
               <h3 v-if="event.type === 'friend-location'">
                 {{ event.content.user.displayName }}
-                <span class="d-block mt-1">{{ event.content.world.name }}</span>
+                <span v-if="event.content.world.name" class="d-block mt-1">{{ event.content.world.name }}</span>
+                <span v-else class="d-block mt-1">Private</span>
               </h3>
-              <h3 v-else-if="event.type === 'friend-add'">
-                Friend Add
-                <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
-              </h3>
-              <h3 v-else-if="event.type === 'friend-delete'">
-                Friend Delete
-                <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
-              </h3>
-              <h3 v-else-if="event.type === 'friend-online'">
-                Friend Online
-                <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
-              </h3>
-              <h3 v-else-if="event.type === 'friend-active'">
-                Friend Active
-                <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
-              </h3>
-              <h3 v-else-if="event.type === 'friend-offline'">
-                Friend Offline
-                <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
-              </h3>
-              <h3 v-else-if="event.type === 'friend-update'">
-                Friend Update
-                <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
-              </h3>
-              <h3 v-else-if="event.type === 'user-update'">
-                User Update
+              <h3 v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)">
+                {{ event_types.find(e => event.type === e.value).text }}
                 <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
               </h3>
               <h3 v-else-if="event.type === 'notification'">
@@ -169,7 +157,6 @@ export default {
         'friend-offline',
         'friend-location',
         'friend-update',
-        'user-update',
         'notification'
       ],
       search: '',
@@ -267,21 +254,23 @@ export default {
     },
     getBackgroundColor(type) {
       switch (type) {
+        case 'friend-location':
+          return '#5E35B1'
         case 'friend-add':
-          return 'green lighten-1'
+          return '#C0CA33'
         case 'friend-delete':
-          return 'red darken-2'
+          return '#880E4F'
         case 'friend-online':
-          return 'light-green darken-1'
+          return '#7CB342'
         case 'friend-active':
-          return 'yellow darken-2'
+          return '#FBC02D'
         case 'friend-offline':
-          return 'red darken-4'
+          return '#B71C1C'
         case 'user-update':
         case 'friend-update':
-          return 'light-blue darken-1'
+          return '#039BE5'
         default:
-          return 'grey darken-4'
+          return '#757575'
       }
     },
     getNotificationsIcon(type) {

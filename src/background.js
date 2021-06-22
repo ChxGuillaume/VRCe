@@ -1,3 +1,6 @@
+import Dexie from 'dexie'
+import moment from "moment";
+
 const allPorts = [];
 
 let events = [];
@@ -5,6 +8,19 @@ let socket, authToken = null;
 let settings = localStorage.getItem('settings')
     ? JSON.parse(localStorage.getItem('settings'))
     : {notify_online: false};
+
+const events_db = new Dexie('events_db');
+events_db.version(1).stores({
+    events: "++id, type, content, date"
+});
+
+events_db.events
+    .where('date')
+    .above(moment().subtract(24, 'hour').toDate())
+    .toArray()
+    .then(data => {
+        events = events.concat(data)
+    })
 
 function init() {
     chrome.cookies.get({
@@ -37,7 +53,7 @@ function createSocket(url) {
 
     socket.onerror = (ev) => console.error(ev);
 
-    console.log(socket)
+    console.log('%cSocket Initiated!', 'color: #90ee90; font-size: 50px;');
 }
 
 function handleVRCEvent(ev) {
@@ -45,8 +61,8 @@ function handleVRCEvent(ev) {
     event.content = parseContent(event.content);
     event.date = new Date();
 
-    console.log(event);
     events.push(event);
+    events_db.events.add(event);
 
     if (settings.notify_online && event.type === 'friend-online')
         chrome.notifications.create({

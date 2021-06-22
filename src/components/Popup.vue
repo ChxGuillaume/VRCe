@@ -41,7 +41,6 @@
       <v-icon>sync</v-icon>
     </v-btn>
 
-
     <v-speed-dial
         v-model="toolbox"
         direction="bottom"
@@ -91,8 +90,10 @@
       </v-tooltip>
     </v-speed-dial>
 
-    <v-row style="margin-bottom: 56px;">
-      <v-col v-if="hasUserData" cols="12" class="text-center pb-0">
+    <h1 v-if="!hasUserData && !fetching" class="mt-2 text-center">Logged Off</h1>
+
+    <v-row v-if="hasUserData" style="margin-bottom: 56px;">
+      <v-col cols="12" class="text-center pb-0">
         <div class="d-inline-block rounded pa-1 mx-2"
              :style="{ background: user_data.rank ? user_data.rank.color : '' }">
           <v-img
@@ -103,9 +104,6 @@
           />
         </div>
         <h1 class="mt-1">{{ user_data.displayName }}</h1>
-      </v-col>
-      <v-col v-else-if="!fetching" cols="12" class="text-center">
-        <h1 class="mt-2">Logged Off</h1>
       </v-col>
       <v-col cols="12" class="pa-0">
         <v-tabs-items v-model="bottom_navigator" style="background-color: transparent">
@@ -168,6 +166,9 @@
                 </v-list-item-content>
               </v-list-item>
             </v-card>
+          </v-tab-item>
+          <v-tab-item value="worlds">
+            <worlds-tab :friends="friends" :worlds="worlds"/>
           </v-tab-item>
           <v-tab-item value="events">
             <events-tab :friends="friends"/>
@@ -379,14 +380,14 @@
       </v-card>
     </v-dialog>
 
-    <v-bottom-navigation v-model="bottom_navigator" shift fixed grow color="primary">
+    <v-bottom-navigation v-if="hasUserData" v-model="bottom_navigator" shift fixed grow color="primary">
       <v-btn height="100%" value="friends" color="transparent">
         <span>Friends</span>
 
         <v-icon>people</v-icon>
       </v-btn>
 
-      <v-btn height="100%" value="worlds" color="transparent" disabled>
+      <v-btn height="100%" value="worlds" color="transparent">
         <span>Worlds</span>
 
         <v-icon>public</v-icon>
@@ -396,6 +397,12 @@
         <span>Events</span>
 
         <v-icon>history</v-icon>
+      </v-btn>
+
+      <v-btn height="100%" value="gallery" color="transparent" disabled>
+        <span>Gallery</span>
+
+        <v-icon>collections</v-icon>
       </v-btn>
 
       <v-btn height="100%" value="settings" color="transparent">
@@ -409,12 +416,13 @@
 
 <script>
 import * as moment from "moment";
-import EventsTab from "./EventsTab";
-import SettingsTab from "./SettingsTab";
+import EventsTab from "./PopupTabs/EventsTab";
+import SettingsTab from "./PopupTabs/SettingsTab";
+import WorldsTab from "./PopupTabs/WorldsTab";
 
 export default {
   name: 'Popup',
-  components: {SettingsTab, EventsTab},
+  components: {WorldsTab, SettingsTab, EventsTab},
   data() {
     return {
       toolbox: false,
@@ -424,9 +432,10 @@ export default {
       friends: [],
       friend_search: '',
       friend_details: {},
+      worlds: [],
       drawer: false,
       no_session_dialog: false,
-      bottom_navigator: 'friends'
+      bottom_navigator: 'settings'
     }
   },
   computed: {
@@ -459,6 +468,8 @@ export default {
     this.port = chrome.extension.connect({
       name: 'popup-app'
     });
+
+    this.bottom_navigator = localStorage.getItem('default_tab') || 'friends';
   },
   methods: {
     fetchUser() {
@@ -493,10 +504,10 @@ export default {
             this.friend_details = data;
 
             if (data.worldId && !['offline'].includes(data.worldId))
-              this.fetchFriendWorld(this.friend_details, data.worldId);
+              this.fetchWorld(data.worldId, true);
           })
     },
-    fetchFriendWorld(friend, worldId) {
+    fetchWorld(worldId, showDrawer = false) {
       if (worldId !== 'private') {
         fetch(`https://vrchat.com/api/1/worlds/${worldId}`)
             .then(response => response.json())
@@ -505,8 +516,11 @@ export default {
               data.updated_at = moment(data.updated_at).format('YYYY-MM-DD HH:mm:ss');
               data.publicationDate = moment(data.publicationDate).format('YYYY-MM-DD HH:mm:ss');
               data.labsPublicationDate = moment(data.labsPublicationDate).format('YYYY-MM-DD HH:mm:ss');
+
+              this.worlds.push(data);
+
               this.friend_details.world = data;
-              this.refreshDrawer();
+              if (showDrawer) this.refreshDrawer();
             })
       } else {
         this.friend_details.world = {
@@ -522,6 +536,14 @@ export default {
           .then(res => res.json())
           .then(data => {
             data.forEach(friend => this.setUserData(friend));
+
+            data.forEach(friend => {
+              const splicedLocation = friend.location.split(':');
+
+              if (splicedLocation && splicedLocation[0].startsWith('wrld_'))
+                this.fetchWorld(splicedLocation[0]);
+            });
+
             this.friends = this.friends.concat(data.filter(e => !this.friends.find(s => e.id === s.id)));
 
             if (data.length === count)

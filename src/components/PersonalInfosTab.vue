@@ -32,7 +32,7 @@
           :style="{
             position: 'relative',
             background: user_data.rank ? user_data.rank.color : '',
-            width: full_width ? '80%' : '374px'
+            width: full_width ? '70%' : '374px'
           }"
       >
         <v-img
@@ -41,7 +41,7 @@
             contain
             width="100%"
             min-height="210"
-            max-height="80vh"
+            max-height="90vh"
             style="cursor: pointer"
             @click="full_width = !full_width"
         />
