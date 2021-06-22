@@ -173,6 +173,9 @@
           <v-tab-item value="events">
             <events-tab :friends="friends"/>
           </v-tab-item>
+          <v-tab-item value="gallery">
+            <gallery-tab :user_data="user_data" @new-user-data="user_data = $event"/>
+          </v-tab-item>
           <v-tab-item value="settings">
             <settings-tab/>
           </v-tab-item>
@@ -399,7 +402,7 @@
         <v-icon>history</v-icon>
       </v-btn>
 
-      <v-btn height="100%" value="gallery" color="transparent" disabled>
+      <v-btn height="100%" value="gallery" color="transparent">
         <span>Gallery</span>
 
         <v-icon>collections</v-icon>
@@ -419,10 +422,11 @@ import * as moment from "moment";
 import EventsTab from "./PopupTabs/EventsTab";
 import SettingsTab from "./PopupTabs/SettingsTab";
 import WorldsTab from "./PopupTabs/WorldsTab";
+import GalleryTab from "./PopupTabs/GalleryTab";
 
 export default {
   name: 'Popup',
-  components: {WorldsTab, SettingsTab, EventsTab},
+  components: {GalleryTab, WorldsTab, SettingsTab, EventsTab},
   data() {
     return {
       toolbox: false,
