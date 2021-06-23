@@ -103,7 +103,7 @@
               width="128"
           />
         </div>
-        <h1 class="mt-1">{{ user_data.displayName }}</h1>
+        <h1 class="mt-1 text-h5 font-weight-bold">{{ user_data.displayName }}</h1>
       </v-col>
       <v-col cols="12" class="pa-0">
         <v-tabs-items v-model="bottom_navigator" style="background-color: transparent">
@@ -141,8 +141,8 @@
                 <v-list-item-content>
                   <v-row class="mx-0 align-center">
                     <v-col cols="9" class="text-center">
-                      <h3>{{ friend.displayName }}</h3>
-                      <h4 class="mt-2">{{ friend.status.name }}</h4>
+                      <h3 class="subtitle-1">{{ friend.displayName }}</h3>
+                      <h4 class="caption mt-2">{{ friend.status.name }}</h4>
                     </v-col>
                     <v-col cols="3" class="d-flex align-center justify-end">
                       <v-tooltip left color="grey darken-2">
@@ -439,7 +439,7 @@ export default {
       worlds: [],
       drawer: false,
       no_session_dialog: false,
-      bottom_navigator: 'settings'
+      bottom_navigator: 'friends'
     }
   },
   computed: {
@@ -469,7 +469,7 @@ export default {
   mounted() {
     this.fetchUser();
 
-    this.port = chrome.extension.connect({
+    this.port = (browser.runtime || chrome.extension).connect({
       name: 'popup-app'
     });
 

@@ -1,5 +1,5 @@
 import Dexie from 'dexie'
-import moment from "moment";
+import moment from 'moment';
 
 const allPorts = [];
 
@@ -23,23 +23,32 @@ events_db.events
     })
 
 function init() {
-    chrome.cookies.get({
-        name: 'auth',
-        url: 'https://vrchat.com'
-    }, cookie => {
-        if (!cookie) {
-            events.splice(0, events.length);
-            if (socket) socket.close(1000, 'known_close');
+    if (browser.cookies) {
+        browser.cookies.get({
+            name: 'auth',
+            url: 'https://vrchat.com'
+        }).then(useCookie);
+    } else if (chrome.cookies) {
+        chrome.cookies.get({
+            name: 'auth',
+            url: 'https://vrchat.com'
+        }, useCookie);
+    }
+}
 
-            sendMessageToPorts({type: 'all_events', events});
-        } else if (authToken !== cookie.value) {
-            events = [];
-            authToken = cookie.value;
+function useCookie(cookie) {
+    if (!cookie) {
+        events.splice(0, events.length);
+        if (socket) socket.close(1000, 'known_close');
 
-            sendMessageToPorts({type: 'all_events', events});
-            createSocket(`wss://pipeline.vrchat.cloud/?authToken=${cookie.value}`);
-        }
-    })
+        sendMessageToPorts({type: 'all_events', events});
+    } else if (authToken !== cookie.value) {
+        events = [];
+        authToken = cookie.value;
+
+        sendMessageToPorts({type: 'all_events', events});
+        createSocket(`wss://pipeline.vrchat.cloud/?authToken=${cookie.value}`);
+    }
 }
 
 function createSocket(url) {
@@ -91,7 +100,7 @@ function saveSettings() {
     localStorage.setItem('settings', JSON.stringify(settings))
 }
 
-chrome.extension.onConnect.addListener((port) => {
+(browser.runtime || chrome.extension).onConnect.addListener((port) => {
     if (port.name === 'popup-event') {
         allPorts.push(port);
 

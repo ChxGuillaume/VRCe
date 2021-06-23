@@ -52,7 +52,7 @@ export default {
     }
   },
   mounted() {
-    this.port = chrome.extension.connect({
+    this.port = (browser.runtime || chrome.extension).connect({
       name: 'popup-settings'
     });
 

@@ -18,8 +18,8 @@
 
           <v-row class="mx-0 align-center">
             <v-col cols="12" class="text-center">
-              <h3>{{ instance.world.name }}</h3>
-              <h4 v-if="instance.location !== 'private'">
+              <h3 class="subtitle-1">{{ instance.world.name }}</h3>
+              <h4 v-if="instance.location !== 'private'" class="caption">
                 Friends in instance:
                 {{ instance.friends.length }}
                 <span v-if="instance.instance"> / {{ instance.instance[1] }}</span>
@@ -41,7 +41,7 @@
           <v-list-item-content>
             <v-row class="mx-0 align-center">
               <v-col cols="12" class="text-center">
-                <h3>{{ friend.displayName }}</h3>
+                <h3 class="subtitle-1">{{ friend.displayName }}</h3>
               </v-col>
             </v-row>
           </v-list-item-content>

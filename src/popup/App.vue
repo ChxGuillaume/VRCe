@@ -13,8 +13,9 @@ export default {
 }
 </script>
 
-<style>
+<style lang="scss">
 html {
+  overflow: hidden;
 }
 
 body {

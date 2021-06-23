@@ -14,7 +14,7 @@
             <v-icon v-if="index === 0">playlist_add_check</v-icon>
           </template>
           <template v-slot:item="{ item }">
-            <v-card width="100%" class="d-flex align-center justify-space-between" color="transparent" flat>
+            <v-card width="200px" class="d-flex align-center justify-space-between" color="transparent" flat>
               <v-simple-checkbox
                   :value="event_types_shown.includes(item.value)"
               />
@@ -25,7 +25,7 @@
             </v-card>
           </template>
         </v-select>
-        <v-spacer/>
+        <v-spacer class="mx-3"/>
         <v-text-field
             v-model="search" class="mt-0" label="Search"
             hide-details solo clearable
@@ -90,16 +90,16 @@
         <v-list-item-content>
           <v-row class="mx-0 align-center">
             <v-col cols="9" class="text-center">
-              <h3 v-if="event.type === 'friend-location'">
-                {{ event.content.user.displayName }}
-                <span v-if="event.content.world.name" class="d-block mt-1">{{ event.content.world.name }}</span>
+              <h3 v-if="event.type === 'friend-location'" class="subtitle-1">
+                <span v-if="event.content.user">{{ event.content.user.displayName }}</span>
+                <span v-if="event.content.world.name" class="d-block mt-1 caption">{{ event.content.world.name }}</span>
                 <span v-else class="d-block mt-1">Private</span>
               </h3>
-              <h3 v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)">
+              <h3 v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)" class="subtitle-1">
                 {{ event_types.find(e => event.type === e.value).text }}
-                <span class="d-block mt-1">{{ event.content.user.displayName }}</span>
+                <span v-if="event.content.user" class="d-block mt-1 caption">{{ event.content.user.displayName }}</span>
               </h3>
-              <h3 v-else-if="event.type === 'notification'">
+              <h3 v-else-if="event.type === 'notification'" class="subtitle-1">
                 <span class="d-block mt-1">
                   {{ event.content.senderUsername }}
                 </span>
@@ -110,17 +110,17 @@
                   {{ event.content.details.responseMessage }}
                 </span>
               </h3>
-              <h3 v-else>{{ event.type }}</h3>
+              <h3 v-else class="subtitle-1">{{ event.type }}</h3>
             </v-col>
             <v-col cols="3" class="px-0 text-center">
-              <h4 class="mt-3">{{ event.date }}</h4>
+              <h4 class="mt-3 subtitle-2">{{ event.display_date }}</h4>
             </v-col>
           </v-row>
         </v-list-item-content>
       </v-list-item>
       <div v-if="!filteredEvents.length" class="fill-height d-flex align-center justify-center flex-column">
-        <h2>No events right now.</h2>
-        <h3>This will auto-refresh when events happen !!</h3>
+        <h2 class="text-h6">No events right now.</h2>
+        <h3 class="subtitle-1">This will auto-refresh when events happen !!</h3>
       </div>
     </v-card>
   </div>
@@ -160,7 +160,8 @@ export default {
         'notification'
       ],
       search: '',
-      users_fetched: []
+      users_fetched: [],
+      fetched_users_ids: []
     }
   },
   computed: {
@@ -176,17 +177,18 @@ export default {
                   || (event.content.senderUsername
                       && event.content.senderUsername.toLowerCase().includes(this.search.toLowerCase()))
           })
-          .sort((a, b) => b.date.localeCompare(a.date));
+          .sort((a, b) => moment(new Date(a.date)) - moment(new Date(b.date)));
 
       const previousUserUpdate = {};
       events.forEach(event => {
-        event.date = moment(event.date).format('MM/DD HH:mm:ss')
+        console.log(event.date)
+        event.display_date = moment(new Date(event.date)).format('MM/DD HH:mm:ss')
 
         if (event.type === 'friend-offline' || event.type === 'friend-delete') {
           event.content.user = this.friends.find(friend => friend.id === event.content.userId);
           if (!event.content.user)
             event.content.user = this.users_fetched.find(friend => friend.id === event.content.userId);
-          if (!event.content.user)
+          if (!event.content.user && !this.fetched_users_ids.includes(event.content.userId))
             this.fetchUser(event.content.userId)
                 .then(data => event.content.user = data);
         } else if (event.type === 'friend-update' || event.type === 'user-update') {
@@ -216,13 +218,11 @@ export default {
   mounted() {
     this.loadTypesShown();
 
-    const port = chrome.extension.connect({
+    const port = (browser.runtime || chrome.extension).connect({
       name: 'popup-event'
     });
 
     port.onMessage.addListener((msg) => {
-      console.log(msg);
-
       switch (msg.type) {
         case 'all_events':
           this.events = msg.events;
@@ -242,14 +242,16 @@ export default {
       localStorage.setItem('popup-events-types-shown', JSON.stringify(this.event_types_shown))
     },
     fetchUser(user_id) {
-      return new Promise((resolve, reject) => {
+      this.fetched_users_ids.push(user_id);
+
+      return new Promise((resolve) => {
         fetch(`https://vrchat.com/api/1/users/${user_id}`)
             .then(response => response.json())
             .then(data => {
               this.users_fetched.push(data);
               resolve(data);
             })
-            .catch(err => reject(err))
+            .catch(() => this.fetchUser(user_id))
       })
     },
     getBackgroundColor(type) {
