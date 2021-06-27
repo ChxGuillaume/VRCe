@@ -37,7 +37,7 @@
                 <span v-if="instance.location !== 'private'">Friends in instance:</span>
                 <span v-else>Friends in private:</span>
                 {{ instance.friends.length }}
-                <span v-if="instance.instance"> / {{ instance.instance[1] }}</span>
+                <span v-if="instance.instance_data"> / {{ instance.instance_data.n_users }}</span>
                 <span v-if="instance.instance_type" class="grey--text font-italic">
                   ({{ instance.instance_type }})
                 </span>
@@ -46,12 +46,31 @@
                 </span>
               </h4>
 
-              <v-btn icon absolute small
-                     color="grey darken-2" style="bottom:6px;right:6px;"
-                     @click="changeShowFriendsState(instance)"
-              >
-                <v-icon small>{{ instance.show_friends ? 'remove' : 'add' }}</v-icon>
-              </v-btn>
+              <v-tooltip color="primary" left>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn icon absolute small
+                         color="grey darken-2" style="top:6px;right:6px;"
+                         @click="sendInviteToInstance(instance)"
+                         v-bind="attrs" v-on="on"
+                  >
+                    <v-icon small>add_location_alt</v-icon>
+                  </v-btn>
+                </template>
+                <span>Send me invite to Instance</span>
+              </v-tooltip>
+
+              <v-tooltip color="primary" left>
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn icon absolute small
+                         color="grey darken-2" style="bottom:6px;right:6px;"
+                         @click="changeShowFriendsState(instance)"
+                         v-bind="attrs" v-on="on"
+                  >
+                    <v-icon small>{{ instance.show_friends ? 'remove' : 'add' }}</v-icon>
+                  </v-btn>
+                </template>
+                <span>{{ instance.show_friends ? 'Reduce' : 'Expand' }} Friends list</span>
+              </v-tooltip>
             </v-col>
           </v-row>
         </div>
@@ -102,6 +121,15 @@
         <div v-if="refresh_friends"/>
       </v-card>
     </v-list-item>
+
+    <v-snackbar
+        v-model="invite_sent"
+        :timeout="3000"
+        bottom text color="primary"
+        transition="slide-y-reverse-transition" style="bottom:56px;"
+    >
+      <v-icon color="primary" left>add_location_alt</v-icon> Invite Sent.
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -120,12 +148,15 @@ export default {
   },
   data() {
     return {
-      refresh_friends: true
+      instances_data: [],
+      instances_data_fetched: [],
+      refresh_friends: true,
+      invite_sent: false
     }
   },
   computed: {
     instances() {
-      const instances = {};
+      const instances = [];
 
       this.friends
           .filter(e => !['', 'offline'].includes(e.location))
@@ -138,10 +169,12 @@ export default {
               let instance_creator = friend.location.match(/(~hidden|~friends)\((.*?)\)/);
               instance_creator = instance_creator ? instance_creator[2] : '';
 
-              if (!instances[friend.location] && friend.location !== 'private')
+              if (!instances[friend.location] && friend.location !== 'private') {
+                this.fetchInstance(friend.location);
+
                 instances[friend.location] = {
                   location: friend.location,
-                  instance: world.instances.find(e => e[0] === splicedLocation[1]),
+                  instance_data: this.instances_data.find(e => e.id === friend.location),
                   instance_type: this.getLocationType(friend.location),
                   instance_region: this.getLocationRegion(friend.location),
                   instance_creator: instance_creator,
@@ -149,8 +182,7 @@ export default {
                   friends: [friend],
                   show_friends: true,
                 };
-              else
-                instances[friend.location].friends.push(friend);
+              } else instances[friend.location].friends.push(friend);
             } else {
               if (!instances['private'])
                 instances['private'] = {
@@ -185,6 +217,22 @@ export default {
     }
   },
   methods: {
+    fetchInstance(location) {
+      if (!this.instances_data_fetched.find(e => e === location)) {
+        this.instances_data_fetched.push(location);
+
+        fetch(`https://vrchat.com/api/1/instances/${location}`)
+            .then(response => response.json())
+            .then(data => {
+              this.instances_data.push(data);
+            })
+      }
+    },
+    sendInviteToInstance(instance) {
+      fetch(`https://vrchat.com/api/1/instances/${instance.location}/invite`, {
+        method: 'POST'
+      }).then(() => this.invite_sent = true)
+    },
     changeShowFriendsState(instance) {
       instance.show_friends = !instance.show_friends;
 
