@@ -11,7 +11,20 @@
             contain
             width="150"
             height="150"
-        />
+        >
+          <template v-slot:placeholder>
+            <v-row
+                class="fill-height ma-0"
+                align="center"
+                justify="center"
+            >
+              <v-progress-circular
+                  indeterminate
+                  color="grey lighten-5"
+              />
+            </v-row>
+          </template>
+        </v-img>
       </div>
       <div
           class="d-inline-block rounded pa-1 mx-2"
@@ -23,7 +36,20 @@
             contain
             width="200"
             min-height="150"
-        />
+        >
+          <template v-slot:placeholder>
+            <v-row
+                class="fill-height ma-0"
+                align="center"
+                justify="center"
+            >
+              <v-progress-circular
+                  indeterminate
+                  color="grey lighten-5"
+              />
+            </v-row>
+          </template>
+        </v-img>
       </div>
       <br>
       <div
@@ -44,7 +70,20 @@
             max-height="90vh"
             style="cursor: pointer"
             @click="full_width = !full_width"
-        />
+        >
+          <template v-slot:placeholder>
+            <v-row
+                class="fill-height ma-0"
+                align="center"
+                justify="center"
+            >
+              <v-progress-circular
+                  indeterminate
+                  color="grey lighten-5"
+              />
+            </v-row>
+          </template>
+        </v-img>
         <v-btn
             fab absolute
             icon small

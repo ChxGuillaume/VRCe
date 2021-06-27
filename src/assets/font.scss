@@ -3,7 +3,7 @@
 $font-family: 'Roboto';
 
 .v-application {
-  [class*='text-'] {
+  [class*='text-']:not(.v-icon) {
     font-family: $font-family, sans-serif !important;
   }
 

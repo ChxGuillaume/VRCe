@@ -14,6 +14,10 @@
             label="Default Tab"
             @change="saveDefaultTab"
         />
+        <p v-if="default_tab === 'events'" class="mb-0 yellow--text darken-3">
+          <v-icon color="yellow darken-3" left>warning</v-icon>
+          Event Tab as default makes the app take longer to load.
+        </p>
       </v-list-item-content>
     </v-list-item>
     <v-list-item-group v-model="settings" multiple @change="saveSettings">

@@ -4,7 +4,7 @@ import moment from 'moment';
 const allPorts = [];
 
 let events = [];
-let socket, authToken = null;
+let socket, authToken, dontRetry = null;
 let settings = localStorage.getItem('settings')
     ? JSON.parse(localStorage.getItem('settings'))
     : {notify_online: false};
@@ -16,11 +16,19 @@ events_db.version(1).stores({
 
 events_db.events
     .where('date')
+    .below(moment().subtract(24, 'hour').toDate())
+    .toArray()
+    .then(data => {
+        events_db.events.bulkDelete(data.map(e => e.id))
+    });
+
+events_db.events
+    .where('date')
     .above(moment().subtract(24, 'hour').toDate())
     .toArray()
     .then(data => {
         events = events.concat(data)
-    })
+    });
 
 function init() {
     if (browser.cookies) {
@@ -43,7 +51,6 @@ function useCookie(cookie) {
 
         sendMessageToPorts({type: 'all_events', events});
     } else if (authToken !== cookie.value) {
-        events = [];
         authToken = cookie.value;
 
         sendMessageToPorts({type: 'all_events', events});
@@ -57,16 +64,30 @@ function createSocket(url) {
     socket.onmessage = handleVRCEvent;
 
     socket.onclose = (ev) => {
-        if (ev.reason !== 'known_close') createSocket(url)
+        if (ev.reason !== 'known_close')
+            setTimeout(() => {
+                if (!dontRetry)
+                    createSocket(url);
+                dontRetry = false;
+            }, 2000);
     };
 
     socket.onerror = (ev) => console.error(ev);
 
-    console.log('%cSocket Initiated!', 'color: #90ee90; font-size: 50px;');
+    socket.onopen = () => {
+        console.log('%cSocket Initiated!', 'color: #90ee90; font-size: 50px;');
+    }
 }
 
 function handleVRCEvent(ev) {
     const event = JSON.parse(ev.data);
+
+    if (event.err) {
+        dontRetry = true;
+        console.warn('Socket Error', event);
+        return;
+    }
+
     event.content = parseContent(event.content);
     event.date = new Date();
 

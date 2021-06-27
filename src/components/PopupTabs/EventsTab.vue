@@ -13,10 +13,13 @@
           <template v-slot:selection="{ index }">
             <v-icon v-if="index === 0">playlist_add_check</v-icon>
           </template>
-          <template v-slot:item="{ item }">
+          <template v-slot:item="{ item, on, attrs }">
             <v-card width="200px" class="d-flex align-center justify-space-between" color="transparent" flat>
               <v-simple-checkbox
+                  v-ripple
                   :value="event_types_shown.includes(item.value)"
+                  v-on="on"
+                  v-bind="attrs"
               />
               {{ item.text }}
               <v-icon right :color="getBackgroundColor(item.value)">
@@ -38,99 +41,147 @@
         class="mx-auto overflow-y-auto"
         color="transparent"
         max-width="400"
-        height="320"
+        :height="paginationPageCount > 1 ? 279 : 320"
+        :style="{ 'margin-bottom': paginationPageCount > 1 ? '41px' : '0px'  }"
         tile
     >
       <v-list-item
-          v-for="[index, event] of filteredEvents.entries()"
+          v-for="[index, event] of filteredEventsPage.entries()"
           :key="index"
-          class="pl-0 d-flex align-center"
-          style="height: 75px;"
-          :style="{ background: getBackgroundColor(event.type) + '44' }"
+          class="px-0"
+          @click="updateShowChanges(event)"
       >
-        <v-img
-            v-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type) && event.content.user"
-            :src="event.content.user.currentAvatarThumbnailImageUrl"
-            max-width="100"
-            height="75"
-        />
-        <v-img
-            v-if="event.type === 'friend-location' && event.content.location === 'private'"
-            src="https://assets.vrchat.com/www/images/default_private_image.png"
-            max-width="100"
-            height="75"
-        />
-        <v-img
-            v-else-if="event.type === 'friend-location'"
-            :src="event.content.world.thumbnailImageUrl"
-            max-width="100"
-            height="75"
-        />
-        <div v-else-if="event.type === 'notification'" style="position: relative">
-          <v-icon
-              v-if="event.content.details.imageUrl"
-              size="20" class="mx-auto" :color="getNotificationColor(event.content.type)"
-              style="position: absolute; top: 10px; right : 10px; z-index: 1"
+        <v-row class="ma-0">
+          <v-col
+              cols="12" class="py-0 pl-0 pr-1 d-flex align-center justify-space-between"
+              :style="{ background: getBackgroundColor(event.type) + '44' }" style="height: 75px;"
           >
-            {{ getNotificationsIcon(event.content.type) }}
-          </v-icon>
-          <v-img
-              v-if="event.content.details.imageUrl"
-              :src="event.content.details.imageUrl"
-              max-width="100"
-              height="75"
-          />
-          <v-list-item-icon v-else class="mx-0 align-self-center" style="width: 100px">
-            <v-icon size="40" class="mx-auto" :color="getNotificationColor(event.content.type)">
-              {{ getNotificationsIcon(event.content.type) }}
-            </v-icon>
-          </v-list-item-icon>
-        </div>
+            <v-img
+                v-if="eventImageSrc(event)"
+                :src="eventImageSrc(event)"
+                max-width="100"
+                height="75"
+            >
+              <template v-slot:placeholder>
+                <v-row
+                    class="fill-height ma-0"
+                    align="center"
+                    justify="center"
+                >
+                  <v-progress-circular
+                      indeterminate
+                      color="grey lighten-5"
+                  />
+                </v-row>
+              </template>
+            </v-img>
+            <div v-else-if="event.type === 'notification'" style="position: relative">
+              <v-icon
+                  v-if="event.content.details.imageUrl"
+                  size="20" class="mx-auto" :color="getNotificationColor(event.content.type)"
+                  style="position: absolute; top: 10px; right : 10px; z-index: 1"
+              >
+                {{ getNotificationsIcon(event.content.type) }}
+              </v-icon>
+              <v-img
+                  v-if="event.content.details.imageUrl"
+                  :src="event.content.details.imageUrl"
+                  max-width="100"
+                  height="75"
+              >
+                <template v-slot:placeholder>
+                  <v-row
+                      class="fill-height ma-0"
+                      align="center"
+                      justify="center"
+                  >
+                    <v-progress-circular
+                        indeterminate
+                        color="grey lighten-5"
+                    />
+                  </v-row>
+                </template>
+              </v-img>
+              <v-list-item-icon v-else class="mx-0 align-self-center" style="width: 100px">
+                <v-icon size="40" class="mx-auto" :color="getNotificationColor(event.content.type)">
+                  {{ getNotificationsIcon(event.content.type) }}
+                </v-icon>
+              </v-list-item-icon>
+            </div>
 
-        <v-list-item-content>
-          <v-row class="mx-0 align-center">
-            <v-col cols="9" class="text-center">
-              <h3 v-if="event.type === 'friend-location'" class="subtitle-1">
-                <span v-if="event.content.user">{{ event.content.user.displayName }}</span>
-                <span v-if="event.content.world.name" class="d-block mt-1 caption">{{ event.content.world.name }}</span>
-                <span v-else class="d-block mt-1">Private</span>
-              </h3>
-              <h3 v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)" class="subtitle-1">
-                {{ event_types.find(e => event.type === e.value).text }}
-                <span v-if="event.content.user" class="d-block mt-1 caption">{{ event.content.user.displayName }}</span>
-              </h3>
-              <h3 v-else-if="event.type === 'notification'" class="subtitle-1">
+            <v-list-item-content>
+              <v-row class="mx-0 align-center">
+                <v-col cols="9" class="text-center">
+                  <h3 v-if="event.type === 'friend-location'" class="subtitle-1">
+                    <span v-if="event.content.user">{{ event.content.user.displayName }}</span>
+                    <span v-if="event.content.world.name" class="d-block mt-1 caption">{{
+                        event.content.world.name
+                      }}</span>
+                    <span v-else class="d-block mt-1">Private</span>
+                  </h3>
+                  <h3 v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)"
+                      class="subtitle-1">
+                    {{ event_types.find(e => event.type === e.value).text }}
+                    <span v-if="event.content.user" class="d-block mt-1 caption">{{
+                        event.content.user.displayName
+                      }}</span>
+                  </h3>
+                  <h3 v-else-if="event.type === 'notification'" class="subtitle-1">
                 <span class="d-block mt-1">
                   {{ event.content.senderUsername }}
                 </span>
-                <span v-if="event.content.details.requestMessage" class="d-block mt-1 caption">
+                    <span v-if="event.content.details.requestMessage" class="d-block mt-1 caption">
                   {{ event.content.details.requestMessage }}
                 </span>
-                <span v-if="event.content.details.responseMessage" class="d-block mt-1 caption">
+                    <span v-if="event.content.details.responseMessage" class="d-block mt-1 caption">
                   {{ event.content.details.responseMessage }}
                 </span>
-              </h3>
-              <h3 v-else class="subtitle-1">{{ event.type }}</h3>
+                  </h3>
+                  <h3 v-else class="subtitle-1">{{ event.type }}</h3>
+                </v-col>
+                <v-col cols="3" class="px-0 text-center">
+                  <h4 class="mt-3 subtitle-2">{{ event.display_date }}</h4>
+                </v-col>
+              </v-row>
+            </v-list-item-content>
+          </v-col>
+          <v-expand-transition>
+            <v-col v-if="['friend-update', 'user-update'].includes(event.type) && show_changes_items === event.show_id" cols="12"
+                   class="pa-0">
+              <previous-user-changes
+                  :user="event.content.user"
+                  :previous_user="event.content.previous_user"
+                  :previous_user_changes="event.content.previous_user_changes"
+              />
             </v-col>
-            <v-col cols="3" class="px-0 text-center">
-              <h4 class="mt-3 subtitle-2">{{ event.display_date }}</h4>
-            </v-col>
-          </v-row>
-        </v-list-item-content>
+          </v-expand-transition>
+        </v-row>
+        <div v-if="refresh_view"/>
       </v-list-item>
+
       <div v-if="!filteredEvents.length" class="fill-height d-flex align-center justify-center flex-column">
         <h2 class="text-h6">No events right now.</h2>
         <h3 class="subtitle-1">This will auto-refresh when events happen !!</h3>
       </div>
+    </v-card>
+
+    <v-card v-if="paginationPageCount > 1" class="d-flex justify-center bottom-pagination" width="100%">
+      <v-pagination
+          v-model="event_page"
+          :length="paginationPageCount"
+          :total-visible="5"
+      />
     </v-card>
   </div>
 </template>
 
 <script>
 import moment from 'moment';
+import PreviousUserChanges from "./EventsTab/PreviousUserChanges";
 
 export default {
   name: 'EventsTab',
+  components: {PreviousUserChanges},
   props: {
     friends: {
       type: Array,
@@ -140,6 +191,8 @@ export default {
   data() {
     return {
       events: [],
+      event_page: 1,
+      event_page_length: 150,
       event_types: [
         {text: 'Friend Add', value: 'friend-add'},
         {text: 'Friend Delete', value: 'friend-delete'},
@@ -161,28 +214,39 @@ export default {
       ],
       search: '',
       users_fetched: [],
-      fetched_users_ids: []
+      fetched_users_ids: [],
+      show_changes_items: null,
+      refresh_view: true
     }
   },
   computed: {
-    filteredEvents() {
-      const events = this.events
+    searchedEvents() {
+      return this.events
           .filter(event => {
             if (!this.search)
               return this.event_types_shown.includes(event.type)
-            else
+            else if (event.content)
               return this.event_types_shown.includes(event.type)
                   && (event.content.user
                       && event.content.user.displayName.toLowerCase().includes(this.search.toLowerCase()))
                   || (event.content.senderUsername
                       && event.content.senderUsername.toLowerCase().includes(this.search.toLowerCase()))
-          })
-          .sort((a, b) => moment(new Date(a.date)) - moment(new Date(b.date)));
+            else
+              return false
+          });
+    },
+    filteredEvents() {
+      // TODO optimization treatment outside of computed ? (Only one sort needed after)
 
+      const events = this.searchedEvents
+          .slice()
+          .sort((a, b) => moment(a.date) - moment(b.date));
+
+      const finalEvents = [];
       const previousUserUpdate = {};
+
       events.forEach(event => {
-        console.log(event.date)
-        event.display_date = moment(new Date(event.date)).format('MM/DD HH:mm:ss')
+        event.display_date = moment(event.date).format('MM/DD HH:mm:ss')
 
         if (event.type === 'friend-offline' || event.type === 'friend-delete') {
           event.content.user = this.friends.find(friend => friend.id === event.content.userId);
@@ -191,28 +255,46 @@ export default {
           if (!event.content.user && !this.fetched_users_ids.includes(event.content.userId))
             this.fetchUser(event.content.userId)
                 .then(data => event.content.user = data);
-        } else if (event.type === 'friend-update' || event.type === 'user-update') {
+
+          finalEvents.push(event);
+        } else if (['friend-update', 'user-update'].includes(event.type)) {
           const user = event.content.user;
           const prevUser = previousUserUpdate[user.id];
 
-          if (prevUser)
+          if (prevUser) {
             Object.keys(user).forEach((key) => {
               if (user[key] !== prevUser[key]) {
+                if (!event.show_id) event.show_id = `${event.display_date}-${event.display_date}`;
+                if (!event.content.previous_user) event.content.previous_user = prevUser;
+
                 if (typeof user[key] === 'string') {
-                  if (!event.content.previous_user) event.content.previous_user = {};
                   if (!event.content.previous_user_changes) event.content.previous_user_changes = {};
 
-                  event.content.previous_user = prevUser;
                   event.content.previous_user_changes[key] = prevUser[key];
                 }
               }
             });
 
+            finalEvents.push(event);
+          }
+
           previousUserUpdate[user.id] = user;
-        }
+        } else finalEvents.push(event);
       })
 
-      return events.filter(e => (e.type !== 'friend-update' || (e.type === 'friend-update' && e.content.previous_user_changes)));
+      return finalEvents.sort((a, b) => moment(b.date) - moment(a.date));
+
+      // return events
+      //     .filter(e => (['friend-update', 'friend-update'].includes(e.type) && e.content.previous_user_changes)
+      //         || !['friend-update', 'friend-update'].includes(e.type))
+      //     .sort((a, b) => moment(b.date) - moment(a.date));
+    },
+    filteredEventsPage() {
+      return this.filteredEvents
+          .slice((this.event_page - 1) * this.event_page_length, this.event_page * this.event_page_length);
+    },
+    paginationPageCount() {
+      return Math.ceil(this.searchedEvents.length / this.event_page_length)
     }
   },
   mounted() {
@@ -234,12 +316,21 @@ export default {
     });
   },
   methods: {
+    eventImageSrc(event) {
+      if (['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type) && event.content.user)
+        return event.content.user.currentAvatarThumbnailImageUrl;
+      else if (event.type === 'friend-location' && event.content.location === 'private')
+        return 'https://assets.vrchat.com/www/images/default_private_image.png';
+      else if (event.type === 'friend-location')
+        return event.content.world.thumbnailImageUrl;
+    },
     loadTypesShown() {
       if (localStorage.getItem('popup-events-types-shown'))
         this.event_types_shown = JSON.parse(localStorage.getItem('popup-events-types-shown'))
     },
     saveTypesShown() {
-      localStorage.setItem('popup-events-types-shown', JSON.stringify(this.event_types_shown))
+      this.event_page = 1;
+      localStorage.setItem('popup-events-types-shown', JSON.stringify(this.event_types_shown));
     },
     fetchUser(user_id) {
       this.fetched_users_ids.push(user_id);
@@ -300,11 +391,30 @@ export default {
         default:
           return 'grey'
       }
+    },
+    updateShowChanges(event) {
+      if (this.show_changes_items !== event.show_id)
+        this.show_changes_items = event.show_id;
+      else
+        this.show_changes_items = null;
+
+      this.refreshView();
+    },
+    refreshView() {
+      this.refresh_view = false;
+
+      this.$nextTick(() => {
+        this.refresh_view = true;
+      })
     }
   }
 }
 </script>
 
 <style scoped>
-
+.bottom-pagination {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
 </style>

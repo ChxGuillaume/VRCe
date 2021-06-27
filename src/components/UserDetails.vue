@@ -186,13 +186,15 @@ export default {
   props: {
     fullscreen: {
       type: Boolean
+    },
+    logged_in: {
+      type: Boolean,
+      required: true
     }
   },
   data() {
     return {
       dialog: false,
-      // TODO take into props
-      logged_in: true,
       friend: {}
     }
   },

@@ -24,17 +24,23 @@
       </template>
     </v-data-table>
 
-    <user-details ref="userDetails"/>
+    <user-details ref="userDetails" :logged_in="logged_in"/>
   </div>
 </template>
 
 <script>
 import * as moment from 'moment';
-import UserDetails from "./UserDetails";
+import UserDetails from "../UserDetails";
 
 export default {
   name: 'PlayerModerationTab',
   components: {UserDetails},
+  props: {
+    logged_in: {
+      type: Boolean,
+      required: true
+    }
+  },
   data() {
     return {
       player_moderation: [],
@@ -60,7 +66,7 @@ export default {
           .then(data => {
             if (!data.error) {
               data.forEach(e => this.updateRow(e));
-              console.log(data);
+
               this.player_moderation = data;
             }
           })

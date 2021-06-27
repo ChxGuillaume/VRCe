@@ -113,14 +113,40 @@
                       :src="worlds[worldId].thumbnailImageUrl"
                       width="200"
                       min-height="150"
-                  />
+                  >
+                    <template v-slot:placeholder>
+                      <v-row
+                          class="fill-height ma-0"
+                          align="center"
+                          justify="center"
+                      >
+                        <v-progress-circular
+                            indeterminate
+                            color="grey lighten-5"
+                        />
+                      </v-row>
+                    </template>
+                  </v-img>
                   <v-img
                       v-else-if="worldId === 'private'"
                       class="rounded"
                       src="https://assets.vrchat.com/www/images/default_private_image.png"
                       width="200"
                       min-height="150"
-                  />
+                  >
+                    <template v-slot:placeholder>
+                      <v-row
+                          class="fill-height ma-0"
+                          align="center"
+                          justify="center"
+                      >
+                        <v-progress-circular
+                            indeterminate
+                            color="grey lighten-5"
+                        />
+                      </v-row>
+                    </template>
+                  </v-img>
                 </template>
                 <template v-slot:item.userIcon="{ item }">
                   <v-img
@@ -129,7 +155,20 @@
                       class="rounded"
                       width="150"
                       min-height="150"
-                  />
+                  >
+                    <template v-slot:placeholder>
+                      <v-row
+                          class="fill-height ma-0"
+                          align="center"
+                          justify="center"
+                      >
+                        <v-progress-circular
+                            indeterminate
+                            color="grey lighten-5"
+                        />
+                      </v-row>
+                    </template>
+                  </v-img>
                 </template>
                 <template v-slot:item.avatar="{ item }">
                   <v-img
@@ -137,7 +176,20 @@
                       class="rounded"
                       width="200"
                       min-height="150"
-                  />
+                  >
+                    <template v-slot:placeholder>
+                      <v-row
+                          class="fill-height ma-0"
+                          align="center"
+                          justify="center"
+                      >
+                        <v-progress-circular
+                            indeterminate
+                            color="grey lighten-5"
+                        />
+                      </v-row>
+                    </template>
+                  </v-img>
                 </template>
                 <template v-slot:item.badges="{ item }">
                   <v-img
@@ -206,10 +258,10 @@
         </v-row>
       </v-tab-item>
       <v-tab-item class="pt-3">
-        <PlayerModerationTab/>
+        <player-moderation-tab :logged_in="!!user_data"/>
       </v-tab-item>
       <v-tab-item class="pt-3">
-        <PersonalInfosTab :user_data="user_data"/>
+        <personal-infos-tab :user_data="user_data"/>
       </v-tab-item>
     </v-tabs>
     <v-dialog
@@ -253,10 +305,8 @@
 <script>
 import 'material-design-icons-iconfont/dist/material-design-icons.css'
 import * as moment from 'moment';
-import PlayerModerationTab from "./PlayerModerationTab";
-import PersonalInfosTab from "./PersonalInfosTab";
-
-// TODO self infos page
+import PlayerModerationTab from "./StandaloneTabs/PlayerModerationTab";
+import PersonalInfosTab from "./StandaloneTabs/PersonalInfosTab";
 
 export default {
   name: 'Standalone',
@@ -340,8 +390,6 @@ export default {
               this.setUserData(data);
               this.user_data = data;
 
-              console.log(this.user_data)
-
               this.fetchFriends();
             } else if (data.error.status_code === 401) {
               this.need_login_form = true;
@@ -349,11 +397,6 @@ export default {
           });
     },
     fetchFriends() {
-      /// TODO fetch with new route (see below)
-      // https://vrchat.com/api/1/auth/user/friends?offset=0&n=10 (Online Friends)
-      // https://vrchat.com/api/1/auth/user/friends?offline=true&offset=0&n=10 (Offline Friends)
-      // Fetch and count until done.
-
       this.friends = [];
       for (const friend of this.user_data.friends) {
         fetch(`https://vrchat.com/api/1/users/${friend}`)
