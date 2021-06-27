@@ -725,6 +725,9 @@ export default {
       chrome.tabs.create({url});
     },
     setUserData(user) {
+      if (this.user_data.activeFriends.includes(user.id))
+        user.location = '';
+
       this.setRank(user);
       this.setStatus(user);
       this.setBioLinks(user);
