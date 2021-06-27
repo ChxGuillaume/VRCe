@@ -176,6 +176,7 @@
                   v-for="friend of sortedFriends"
                   :key="friend.id"
                   class="pl-0"
+                  style="height: 75px;"
                   :style="{ background: friend.status.color + '33' }"
                   @click="fetchUserDetails($event, friend.id)"
               >
