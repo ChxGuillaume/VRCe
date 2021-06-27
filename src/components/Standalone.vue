@@ -1,6 +1,6 @@
 <template>
   <v-container fluid class="pa-0">
-    <v-tooltip right>
+    <v-tooltip v-if="user_data.id" right>
       <template v-slot:activator="{ on, attrs }">
         <v-btn
             fixed top left fab
@@ -15,7 +15,7 @@
       <span>Disconnect From VRChat Home</span>
     </v-tooltip>
 
-    <v-tabs class="mt-16" centered background-color="transparent" slider-color="transparent">
+    <v-tabs v-if="user_data.id" class="mt-16" centered background-color="transparent" slider-color="transparent">
       <v-tab>
         <v-icon left>
           people
@@ -276,24 +276,57 @@
             Not Logged In
           </v-card-title>
 
-          <v-card-text class="pt-3">
-            You are actually disconnected from VRChat Home you need to login here:
-            <br><br>
+          <v-card-text class="pt-5 text-center">
+            You are actually disconnected from VRChat Home.
+            <br>
+            Please login here
             <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home/login</a>
-            <br><br>
-            When you're done please click the button below.
+            and then click the button below.
           </v-card-text>
 
           <v-divider/>
 
-          <v-card-actions>
-            <v-spacer></v-spacer>
+          <v-card-actions class="d-flex justify-center">
             <v-btn
-                color="green"
-                text
+                color="primary"
+                outlined
                 @click="fetchUser"
             >
               I'm now connected
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </template>
+    </v-dialog>
+    <v-dialog
+        v-model="need_visit_vrc_home_form"
+        transition="dialog-bottom-transition"
+        max-width="600"
+        persistent
+    >
+      <template v-slot:default>
+        <v-card>
+          <v-card-title class="text-h5 orange lighten-1">
+            Cloudflare Error
+          </v-card-title>
+
+          <v-card-text class="pt-5 text-center">
+            Cloudflare need to check your browser.
+            <br>
+            Please check
+            <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home</a>
+            and then click the button below.
+          </v-card-text>
+
+          <v-divider/>
+
+          <v-card-actions class="d-flex justify-center">
+            <v-btn
+                color="primary"
+                outlined
+                @click="fetchUser"
+            >
+              My browser is verified
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -338,6 +371,7 @@ export default {
     friends_shown_headers: [],
     worlds: {},
     need_login_form: false,
+    need_visit_vrc_home_form: false,
     show_table: true
   }),
   computed: {
@@ -384,15 +418,20 @@ export default {
       this.need_login_form = false;
 
       fetch('https://vrchat.com/api/1/auth/user')
-          .then(response => response.json())
+          .then(response => {
+            if (response.status === 503)
+              this.need_visit_vrc_home_form = true;
+            else if (response.status === 401)
+              this.need_login_form = true;
+            else
+              return response.json();
+          })
           .then(data => {
-            if (!data.error) {
+            if (data) {
               this.setUserData(data);
               this.user_data = data;
 
               this.fetchFriends();
-            } else if (data.error.status_code === 401) {
-              this.need_login_form = true;
             }
           });
     },
