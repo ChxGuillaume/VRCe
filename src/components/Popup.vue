@@ -202,21 +202,18 @@
                       <h4 class="caption mt-2">{{ friend.status.name }}</h4>
                     </v-col>
                     <v-col cols="3" class="d-flex align-center justify-end">
-                      <v-tooltip left color="grey darken-2">
+                      <v-tooltip left color="primary">
                         <template v-slot:activator="{ on, attrs }">
                           <v-btn
                               v-if="friend.world_link"
-                              v-bind="attrs"
-                              v-on="on"
-                              :href="friend.world_link"
-                              target="_blank"
+                              v-bind="attrs" v-on="on"
                               icon
+                              @click="sendInviteToInstance(friend.location)"
                           >
-                            <v-icon>{{ friend.world_icon }}</v-icon>
+                            <v-icon>add_location_alt</v-icon>
                           </v-btn>
-                          <v-icon v-else style="margin-right: 6px">{{ friend.world_icon }}</v-icon>
                         </template>
-                        <span>Join</span>
+                        <span>Send me invite to Instance</span>
                       </v-tooltip>
                     </v-col>
                   </v-row>
@@ -497,6 +494,15 @@
       </v-card>
     </v-dialog>
 
+    <v-snackbar
+        v-model="invite_sent"
+        :timeout="3000"
+        bottom text color="primary"
+        transition="slide-y-reverse-transition" style="bottom:56px;"
+    >
+      <v-icon color="primary" left>add_location_alt</v-icon> Invite Sent.
+    </v-snackbar>
+
     <v-bottom-navigation v-if="hasUserData" v-model="bottom_navigator" shift fixed grow color="primary">
       <v-btn height="100%" value="friends" color="transparent">
         <span>Friends</span>
@@ -554,7 +560,8 @@ export default {
       worlds: [],
       drawer: false,
       no_session_dialog: false,
-      bottom_navigator: 'friends'
+      bottom_navigator: 'friends',
+      invite_sent: false
     }
   },
   computed: {
@@ -681,6 +688,11 @@ export default {
             else if (!offline && data.length !== count)
               this.fetchFriends(true, 0);
           })
+    },
+    sendInviteToInstance(location) {
+      fetch(`https://vrchat.com/api/1/instances/${location}/invite`, {
+        method: 'POST'
+      }).then(() => this.invite_sent = true)
     },
     logoutFromVRChat() {
       fetch('https://vrchat.com/api/1/logout', {
