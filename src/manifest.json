@@ -9,9 +9,9 @@
     "https://vrchat.com/"
   ],
   "icons": {
-    "16": "icons/vrc_logo-16_x_16.png",
-    "48": "icons/vrc_logo-48_x_48.png",
-    "128": "icons/vrc_logo-128_x_128.png"
+    "16": "icons/vrce-logo-16_x_16.png",
+    "48": "icons/vrce-logo-48_x_48.png",
+    "128": "icons/vrce-logo-128_x_128.png"
   },
   "background": {
     "scripts": ["js/background.js"]
@@ -20,8 +20,8 @@
     "default_popup": "popup.html",
     "default_title": "VRCe",
     "default_icon": {
-      "19": "icons/vrc_logo-19_x_19.png",
-      "38": "icons/vrc_logo-38_x_38.png"
+      "19": "icons/vrce-logo-19_x_19.png",
+      "38": "icons/vrce-logo-38_x_38.png"
     }
   }
 }
