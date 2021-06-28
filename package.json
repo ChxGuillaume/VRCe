@@ -1,6 +1,6 @@
 {
   "name": "vrc_api_ext",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service build --mode development --watch",
@@ -12,6 +12,7 @@
     "core-js": "^3.6.5",
     "dexie": "^3.0.3",
     "material-design-icons-iconfont": "^6.1.0",
+    "uuid": "^8.3.2",
     "vue": "^2.6.11",
     "vue-router": "^3.2.0",
     "vuetify": "^2.5.1",

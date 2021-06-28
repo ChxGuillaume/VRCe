@@ -46,8 +46,8 @@
         tile
     >
       <v-list-item
-          v-for="[index, event] of filteredEventsPage.entries()"
-          :key="index"
+          v-for="event of filteredEventsPage"
+          :key="event.uid"
           class="px-0"
           @click="updateShowChanges(event)"
       >
@@ -108,15 +108,27 @@
                 </v-icon>
               </v-list-item-icon>
             </div>
+            <v-card v-else width="100" height="75" color="transparent" flat>
+              <v-row
+                  class="fill-height ma-0"
+                  align="center"
+                  justify="center"
+              >
+                <v-progress-circular
+                    indeterminate
+                    color="grey lighten-5"
+                />
+              </v-row>
+            </v-card>
 
             <v-list-item-content>
               <v-row class="mx-0 align-center">
                 <v-col cols="9" class="text-center">
                   <h3 v-if="event.type === 'friend-location'" class="subtitle-1">
                     <span v-if="event.content.user">{{ event.content.user.displayName }}</span>
-                    <span v-if="event.content.world.name" class="d-block mt-1 caption">{{
-                        event.content.world.name
-                      }}</span>
+                    <span v-if="event.content.world.name" class="d-block mt-1 caption">
+                      {{ event.content.world.name }}
+                    </span>
                     <span v-else class="d-block mt-1">Private</span>
                   </h3>
                   <h3 v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)"
@@ -146,7 +158,8 @@
             </v-list-item-content>
           </v-col>
           <v-expand-transition>
-            <v-col v-if="['friend-update', 'user-update'].includes(event.type) && show_changes_items === event.show_id" cols="12"
+            <v-col v-if="['friend-update', 'user-update'].includes(event.type) && show_changes_items === event.uid"
+                   cols="12"
                    class="pa-0">
               <previous-user-changes
                   :user="event.content.user"
@@ -216,7 +229,8 @@ export default {
       users_fetched: [],
       fetched_users_ids: [],
       show_changes_items: null,
-      refresh_view: true
+      refresh_view: true,
+      refresh_view_timout: null
     }
   },
   computed: {
@@ -227,67 +241,23 @@ export default {
               return this.event_types_shown.includes(event.type)
             else if (event.content)
               return this.event_types_shown.includes(event.type)
-                  && (event.content.user
-                      && event.content.user.displayName.toLowerCase().includes(this.search.toLowerCase()))
-                  || (event.content.senderUsername
-                      && event.content.senderUsername.toLowerCase().includes(this.search.toLowerCase()))
+                  && (
+                      (event.content.user
+                          && event.content.user.displayName.toLowerCase().includes(this.search.toLowerCase()))
+                      || (event.content.senderUsername
+                          && event.content.senderUsername.toLowerCase().includes(this.search.toLowerCase()))
+                      || (event.content.world && event.content.world.name
+                          && event.content.world.name.toLowerCase().includes(this.search.toLowerCase()))
+                  )
             else
               return false
           });
     },
     filteredEvents() {
-      // TODO optimization treatment outside of computed ? (Only one sort needed after)
-
-      const events = this.searchedEvents
-          .slice()
-          .sort((a, b) => moment(a.date) - moment(b.date));
-
-      const finalEvents = [];
-      const previousUserUpdate = {};
-
-      events.forEach(event => {
-        event.display_date = moment(event.date).format('MM/DD HH:mm:ss')
-
-        if (event.type === 'friend-offline' || event.type === 'friend-delete') {
-          event.content.user = this.friends.find(friend => friend.id === event.content.userId);
-          if (!event.content.user)
-            event.content.user = this.users_fetched.find(friend => friend.id === event.content.userId);
-          if (!event.content.user && !this.fetched_users_ids.includes(event.content.userId))
-            this.fetchUser(event.content.userId)
-                .then(data => event.content.user = data);
-
-          finalEvents.push(event);
-        } else if (['friend-update', 'user-update'].includes(event.type)) {
-          const user = event.content.user;
-          const prevUser = previousUserUpdate[user.id];
-
-          if (prevUser) {
-            Object.keys(user).forEach((key) => {
-              if (user[key] !== prevUser[key]) {
-                if (!event.show_id) event.show_id = `${event.display_date}-${event.display_date}`;
-                if (!event.content.previous_user) event.content.previous_user = prevUser;
-
-                if (typeof user[key] === 'string') {
-                  if (!event.content.previous_user_changes) event.content.previous_user_changes = {};
-
-                  event.content.previous_user_changes[key] = prevUser[key];
-                }
-              }
-            });
-
-            finalEvents.push(event);
-          }
-
-          previousUserUpdate[user.id] = user;
-        } else finalEvents.push(event);
-      })
-
-      return finalEvents.sort((a, b) => moment(b.date) - moment(a.date));
-
-      // return events
-      //     .filter(e => (['friend-update', 'friend-update'].includes(e.type) && e.content.previous_user_changes)
-      //         || !['friend-update', 'friend-update'].includes(e.type))
-      //     .sort((a, b) => moment(b.date) - moment(a.date));
+      return this.searchedEvents
+          .filter(e => (['friend-update', 'friend-update'].includes(e.type) && e.content.previous_user_changes)
+              || !['friend-update', 'friend-update'].includes(e.type))
+          .sort((a, b) => moment(b.date) - moment(a.date));
     },
     filteredEventsPage() {
       return this.filteredEvents
@@ -307,10 +277,12 @@ export default {
     port.onMessage.addListener((msg) => {
       switch (msg.type) {
         case 'all_events':
-          this.events = msg.events;
+          this.events = msg.events.sort((a, b) => moment(a.date) - moment(b.date));
+          this.events.forEach(event => this.setEventData(event));
           break;
         case 'new_events':
           this.events.push(msg.event);
+          this.setEventData(msg.event);
           break;
       }
     });
@@ -331,6 +303,63 @@ export default {
     saveTypesShown() {
       this.event_page = 1;
       localStorage.setItem('popup-events-types-shown', JSON.stringify(this.event_types_shown));
+    },
+    setEventData(event) {
+      event.display_date = moment(event.date).format('MM/DD HH:mm:ss')
+
+      if (event.type === 'friend-offline' || event.type === 'friend-delete') {
+        this.setEventMissingUser(event);
+      } else if (['friend-update', 'user-update'].includes(event.type)) {
+        this.setEventTypeUpdate(event);
+      }
+    },
+    setEventMissingUser(event) {
+      event.content.user = this.friends.find(friend => friend.id === event.content.userId);
+
+      if (!event.content.user)
+        event.content.user = this.users_fetched.find(friend => friend.id === event.content.userId);
+      if (!event.content.user && !this.fetched_users_ids.includes(event.content.userId)) {
+        this.fetchUser(event.content.userId)
+            .then(data => {
+              event.content.user = data;
+              this.refreshView();
+            });
+      } else
+        setTimeout(() => {
+          this.setEventMissingUser(event);
+        }, 100);
+    },
+    setEventTypeUpdate(event) {
+      const user = event.content.user;
+
+      let prevUser;
+      for (let i = (this.events.length - 1); i > 0; i--) {
+        const iEvent = this.events[i];
+
+        if (iEvent.type === 'friend-update'
+            && event.date > iEvent.date
+            && event.uid !== iEvent.uid
+            && iEvent.content.user
+            && iEvent.content.user.id === user.id
+        ) {
+          prevUser = iEvent.content.user;
+          break;
+        }
+      }
+
+      if (prevUser) {
+        Object.keys(user).forEach((key) => {
+          if (user[key] !== prevUser[key]) {
+            event.content.previous_user = prevUser;
+
+            if (typeof user[key] === 'string') {
+              if (!event.content.previous_user_changes) event.content.previous_user_changes = {};
+
+              event.content.previous_user_changes[key] = prevUser[key];
+            }
+          }
+        });
+      }
     },
     fetchUser(user_id) {
       this.fetched_users_ids.push(user_id);
@@ -393,8 +422,8 @@ export default {
       }
     },
     updateShowChanges(event) {
-      if (this.show_changes_items !== event.show_id)
-        this.show_changes_items = event.show_id;
+      if (this.show_changes_items !== event.uid)
+        this.show_changes_items = event.uid;
       else
         this.show_changes_items = null;
 
@@ -403,9 +432,10 @@ export default {
     refreshView() {
       this.refresh_view = false;
 
-      this.$nextTick(() => {
+      clearTimeout(this.refresh_view_timout);
+      this.refresh_view_timout = setTimeout(() => {
         this.refresh_view = true;
-      })
+      }, 100);
     }
   }
 }

@@ -1,5 +1,6 @@
 import Dexie from 'dexie'
 import moment from 'moment';
+import { v4 as uuidv4 } from 'uuid';
 
 const allPorts = [];
 
@@ -10,8 +11,8 @@ let settings = localStorage.getItem('settings')
     : {notify_online: false};
 
 const events_db = new Dexie('events_db');
-events_db.version(1).stores({
-    events: "++id, type, content, date"
+events_db.version(2).stores({
+    events: "++id, uid, type, content, date"
 });
 
 events_db.events
@@ -19,7 +20,7 @@ events_db.events
     .below(moment().subtract(24, 'hour').toDate())
     .toArray()
     .then(data => {
-        events_db.events.bulkDelete(data.map(e => e.id))
+        events_db.events.bulkDelete(data.map(e => e.id));
     });
 
 events_db.events
@@ -27,7 +28,12 @@ events_db.events
     .above(moment().subtract(24, 'hour').toDate())
     .toArray()
     .then(data => {
-        events = events.concat(data)
+        data.forEach(event => {
+            if (!event.uid)
+                event.uid = uuidv4();
+        });
+
+        events = events.concat(data);
     });
 
 function init() {
@@ -88,8 +94,9 @@ function handleVRCEvent(ev) {
         return;
     }
 
-    event.content = parseContent(event.content);
+    event.uid = uuidv4();
     event.date = new Date();
+    event.content = parseContent(event.content);
 
     events.push(event);
     events_db.events.add(event);
