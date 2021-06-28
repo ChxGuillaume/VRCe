@@ -1,3 +1,9 @@
+<p align="center">
+    <a href="#">
+    	<img src="public/icons/vrce-logo-256_x_256.png" height="156">
+    </a>
+</p>
+
 # 🤗 VRCe - Manage your VRChat experience.
 
 Simple extension to visualize and manage your VRChat experience.
