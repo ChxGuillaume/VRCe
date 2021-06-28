@@ -1,8 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "VRC Api Visualizer",
-  "homepage_url": "http://localhost:8080/",
-  "description": "A Visualisation Chrome Extension for VRChat API",
+  "name": "VRCe - Manage your VRChat experience.",
+  "description": "This extension allows you to see VRChat.com websites data with a better interface.",
   "default_locale": "en",
   "permissions": [
     "cookies",
@@ -19,7 +18,7 @@
   },
   "browser_action": {
     "default_popup": "popup.html",
-    "default_title": "VRC Api Visualizer",
+    "default_title": "VRCe",
     "default_icon": {
       "19": "icons/vrc_logo-19_x_19.png",
       "38": "icons/vrc_logo-38_x_38.png"
