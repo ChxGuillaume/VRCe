@@ -39,6 +39,6 @@ Distributed under the GPL-3.0 License. See [LICENSE](LICENSE.md) for more inform
 
 # 📑 Changelog
 
-My version are arbitrary, they only exist cause of the Webstores needing verification before publishing.
+My version are arbitrary versioned here [CHANGELOG.md](CHANGELOG.md), it only exists cause of the Webstores needing verification before publishing.
 
 You can also find them here: https://addons.mozilla.org/en-US/firefox/addon/vrc-e/versions/
