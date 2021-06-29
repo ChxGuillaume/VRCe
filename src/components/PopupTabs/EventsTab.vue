@@ -336,7 +336,7 @@ export default {
       for (let i = (this.events.length - 1); i > 0; i--) {
         const iEvent = this.events[i];
 
-        if (iEvent.type === 'friend-update'
+        if (['friend-update', 'user-update'].includes(iEvent.type)
             && event.date > iEvent.date
             && event.uid !== iEvent.uid
             && iEvent.content.user
