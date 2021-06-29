@@ -416,6 +416,7 @@ export default {
   methods: {
     fetchUser() {
       this.need_login_form = false;
+      this.need_visit_vrc_home_form = false;
 
       fetch('https://vrchat.com/api/1/auth/user')
           .then(response => {
