@@ -36,3 +36,9 @@ Then the extension is built into `artifacts` folder.
 # 🧾 License
 
 Distributed under the GPL-3.0 License. See [LICENSE](LICENSE.md) for more information.
+
+# 📑 Changelog
+
+My version are arbitrary, they only exist cause of the Webstores needing verification before publishing.
+
+You can also find them here: https://addons.mozilla.org/en-US/firefox/addon/vrc-e/versions/
