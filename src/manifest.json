@@ -6,7 +6,7 @@
   "permissions": [
     "cookies",
     "notifications",
-    "https://vrchat.com/"
+    "https://vrchat.com/*"
   ],
   "icons": {
     "16": "icons/vrce-logo-16_x_16.png",

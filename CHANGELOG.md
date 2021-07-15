@@ -1,3 +1,8 @@
+# 1.5.0
+
+Added:
+- Notification for VRC Notifications (Invite, Invite Request, Reply, Friend Request)
+
 # 1.4.5
 
 Update:

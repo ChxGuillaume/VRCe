@@ -318,13 +318,13 @@ export default {
 
       if (!event.content.user)
         event.content.user = this.users_fetched.find(friend => friend.id === event.content.userId);
-      if (!event.content.user && !this.fetched_users_ids.includes(event.content.userId)) {
+      if (!event.content.user && !this.fetched_users_ids.includes(event.content.userId))
         this.fetchUser(event.content.userId)
             .then(data => {
               event.content.user = data;
               this.refreshView();
             });
-      } else
+      else
         setTimeout(() => {
           this.setEventMissingUser(event);
         }, 100);

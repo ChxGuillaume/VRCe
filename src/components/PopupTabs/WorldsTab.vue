@@ -6,6 +6,10 @@
       height="384"
       tile
   >
+    <h1 v-if="!instances.length" class="mt-16 text-h5 text-center">
+      No friends Online
+    </h1>
+
     <v-list-item
         v-for="[index, instance] of Object.entries(instances)"
         :key="instance.location"
@@ -46,7 +50,7 @@
                 </span>
               </h4>
 
-              <v-tooltip color="primary" left>
+              <v-tooltip v-if="instance.location !== 'private'" color="primary" left>
                 <template v-slot:activator="{ on, attrs }">
                   <v-btn icon absolute small
                          color="grey darken-2" style="top:6px;right:6px;"
@@ -199,7 +203,12 @@ export default {
             }
           });
 
-      const instances_array = Object.values(instances).sort((a) => {
+      const instances_values = Object.values(instances);
+
+      if (instances_values.length === 1)
+        instances_values[0].show_friends = true;
+
+      const instances_array = instances_values.sort((a) => {
         return a.location === 'private' ? 1 : -1;
       });
 

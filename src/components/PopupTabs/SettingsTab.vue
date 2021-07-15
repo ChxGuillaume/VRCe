@@ -32,6 +32,21 @@
           </v-list-item-content>
         </template>
       </v-list-item>
+      <v-list-item value="notify_notifications">
+        <template v-slot:default="{ active }">
+          <v-list-item-action>
+            <v-checkbox
+                :input-value="active"
+                color="primary"
+            />
+          </v-list-item-action>
+
+          <v-list-item-content>
+            <v-list-item-title>Notify on Notifications</v-list-item-title>
+            <v-list-item-subtitle>Invite, Invite Request, Reply, Friend Request</v-list-item-subtitle>
+          </v-list-item-content>
+        </template>
+      </v-list-item>
     </v-list-item-group>
   </v-card>
 </template>

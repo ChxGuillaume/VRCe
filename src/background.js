@@ -1,6 +1,6 @@
 import Dexie from 'dexie'
 import moment from 'moment';
-import { v4 as uuidv4 } from 'uuid';
+import {v4 as uuidv4} from 'uuid';
 
 const allPorts = [];
 
@@ -8,7 +8,7 @@ let events = [];
 let socket, authToken, dontRetry = null;
 let settings = localStorage.getItem('settings')
     ? JSON.parse(localStorage.getItem('settings'))
-    : {notify_online: false};
+    : {notify_online: false, notify_notifications: false};
 
 const events_db = new Dexie('events_db');
 events_db.version(2).stores({
@@ -106,8 +106,11 @@ function handleVRCEvent(ev) {
             title: 'Friend Online',
             message: event.content.user.displayName,
             type: 'basic',
-            iconUrl: 'icons/vrc_logo-128_x_128.png'
+            iconUrl: 'icons/vrce-logo-128_x_128.png'
         });
+
+    if (settings.notify_notifications && event.type === 'notification')
+        notifyNotification(event).then();
 
     sendMessageToPorts({type: 'new_events', event});
 }
@@ -126,6 +129,53 @@ function parseContent(content) {
 
 function saveSettings() {
     localStorage.setItem('settings', JSON.stringify(settings))
+}
+
+async function notifyNotification(event) {
+    console.log(event)
+    chrome.notifications.create(await notifyNotificationOptions(event));
+}
+
+async function notifyNotificationOptions(event) {
+    let notification = {
+        type: 'basic',
+        title: 'Not set ?',
+        message: 'Not set ?',
+        contextMessage: '',
+        iconUrl: 'icons/vrce-logo-128_x_128.png'
+    };
+
+    switch (event.content.type) {
+        case 'invite':
+            notification.title = 'Join Invite';
+            notification.message = `${event.content.senderUsername} invite you to ${event.content.details.worldName}`;
+            notification.iconUrl = 'icons/join-invite.png';
+            break;
+        case 'requestInvite':
+            notification.title = 'Join Request';
+            notification.message = `${event.content.senderUsername} wants to join you`;
+            notification.iconUrl = 'icons/join-request.png';
+            notification.contextMessage = event.content.details.inviteMessage;
+            break;
+        case 'inviteResponse':
+            notification.title = 'Reply';
+            notification.message = `${event.content.senderUsername} replied to you`;
+            notification.iconUrl = 'icons/reply.png';
+            notification.contextMessage = event.content.details.responseMessage;
+            break;
+        case 'friendRequest':
+            notification.title = 'Friend Invite';
+            notification.message = `${event.content.senderUsername}`;
+            notification.iconUrl = 'icons/friend-add.png';
+            break;
+    }
+
+    if (event.content.details.imageUrl) {
+        const iconRequest = await fetch(`http://nekotiki.fr:55555/${event.content.details.imageUrl}`);
+        notification.iconUrl = await blobToBase64(await iconRequest.blob());
+    }
+
+    return notification;
 }
 
 (browser.runtime || chrome.extension).onConnect.addListener((port) => {
@@ -150,3 +200,13 @@ function saveSettings() {
 });
 
 init();
+
+function blobToBase64(blob) {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    return new Promise(resolve => {
+        reader.onloadend = () => {
+            resolve(reader.result);
+        };
+    });
+}
