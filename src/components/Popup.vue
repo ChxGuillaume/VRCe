@@ -180,7 +180,7 @@
                   :style="{ background: friend.status.color + '33' }"
                   @click="fetchUserDetails($event, friend.id)"
               >
-                <v-img :src="friend.currentAvatarThumbnailImageUrl" max-width="100" height="75">
+                <v-img :src="friend.profilePicOverride ? friend.profilePicOverride : friend.currentAvatarThumbnailImageUrl" max-width="100" height="75">
                   <template v-slot:placeholder>
                     <v-row
                         class="fill-height ma-0"

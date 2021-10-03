@@ -151,14 +151,14 @@ export default {
     Icons() {
       const icons = this.icons.slice();
 
-      icons.forEach(e => e.current = e.url === this.user_data.userIcon);
+      icons.forEach(e => e.current = e.url.match(/(file_.*?)\//)[1] === this.user_data.userIcon.match(/(file_.*?)\//)[1]);
 
       return icons;
     },
     Pictures() {
       const pictures = this.pictures.slice();
 
-      pictures.forEach(e => e.current = e.url === this.user_data.profilePicOverride);
+      pictures.forEach(e => e.current = e.url.match(/(file_.*?)\//)[1] === this.user_data.profilePicOverride.match(/(file_.*?)\//)[1]);
 
       return pictures;
     }

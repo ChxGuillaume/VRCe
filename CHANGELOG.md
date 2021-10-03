@@ -1,19 +1,33 @@
+# 1.5.1
+
+Fix:
+- Picture Override now sets avatar picture to default (now displaying Picture Override when existing)
+- Gallery active Icon/Picture fixed
+
 # 1.5.0
 
 Added:
 - Notification for VRC Notifications (Invite, Invite Request, Reply, Friend Request)
 
+Update:
+- No friends online in WorldsTab
+- Extend private in WorldsTab when nobody in other
+
+Fix:
+- No invite button on private instance
+- User Update event in EventsTab was not working properly
+
 # 1.4.5
+
+Added:
+- Invite to instance in WorldsTab
+- Tooltips on WorldsTab buttons
 
 Update:
 - New Logo
 
 Fix:
 - Standalone Cloudflare dialog now go away on button click
-
-Added:
-- Invite to instance in WorldsTab
-- Tooltips on WorldsTab buttons
 
 # 1.4.4
 

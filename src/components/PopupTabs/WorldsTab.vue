@@ -36,7 +36,8 @@
           <v-row class="mx-0 align-center">
             <v-col cols="12" class="pr-7 text-center" style="position: relative">
               <h3 class="subtitle-1" style="width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-                {{ instance.world.name }}</h3>
+                {{ instance.world.name }}
+              </h3>
               <h4 class="caption">
                 <span v-if="instance.location !== 'private'">Friends in instance:</span>
                 <span v-else>Friends in private:</span>
@@ -89,7 +90,12 @@
                 @click="userDetails(friend.id)"
             >
               <v-card width="100" color="transparent" class="py-2" flat>
-                <v-img class="mx-auto rounded" :src="friend.currentAvatarThumbnailImageUrl" height="50" width="67">
+                <v-img
+                    class="mx-auto rounded"
+                    :src="friend.profilePicOverride ? friend.profilePicOverride : friend.currentAvatarThumbnailImageUrl"
+                    height="50"
+                    width="67"
+                >
                   <template v-slot:placeholder>
                     <v-row
                         class="fill-height ma-0"
@@ -132,7 +138,8 @@
         bottom text color="primary"
         transition="slide-y-reverse-transition" style="bottom:56px;"
     >
-      <v-icon color="primary" left>add_location_alt</v-icon> Invite Sent.
+      <v-icon color="primary" left>add_location_alt</v-icon>
+      Invite Sent.
     </v-snackbar>
   </v-card>
 </template>

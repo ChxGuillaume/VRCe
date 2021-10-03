@@ -191,6 +191,28 @@
                     </template>
                   </v-img>
                 </template>
+                <template v-slot:item.profilePicOverride="{ item }">
+                  <v-img
+                      v-if="item.profilePicOverride"
+                      :src="item.profilePicOverride"
+                      class="rounded"
+                      width="200"
+                      min-height="150"
+                  >
+                    <template v-slot:placeholder>
+                      <v-row
+                          class="fill-height ma-0"
+                          align="center"
+                          justify="center"
+                      >
+                        <v-progress-circular
+                            indeterminate
+                            color="grey lighten-5"
+                        />
+                      </v-row>
+                    </template>
+                  </v-img>
+                </template>
                 <template v-slot:item.badges="{ item }">
                   <v-img
                       v-if="item.tags.includes('system_early_adopter')"
@@ -349,9 +371,10 @@ export default {
     friends: [],
     friends_search: '',
     friends_headers: [
-      {text: 'World', align: 'start', value: 'worldId'},
-      {text: 'Avatar Icon', value: 'userIcon'},
+      {text: 'World', align: 'start', value: 'worldId', sortable: false},
+      {text: 'Avatar Icon', value: 'userIcon', sortable: false},
       {text: 'Avatar', value: 'avatar', sortable: false},
+      {text: 'Picture', value: 'profilePicOverride', sortable: false},
       {text: 'Username', value: 'username'},
       {text: 'Display Name', value: 'displayName'},
       {text: 'Badges', value: 'badges', sortable: false},

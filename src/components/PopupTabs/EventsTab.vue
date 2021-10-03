@@ -290,7 +290,9 @@ export default {
   methods: {
     eventImageSrc(event) {
       if (['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type) && event.content.user)
-        return event.content.user.currentAvatarThumbnailImageUrl;
+        return event.content.user.profilePicOverride
+            ? event.content.user.profilePicOverride
+            : event.content.user.currentAvatarThumbnailImageUrl;
       else if (event.type === 'friend-location' && event.content.location === 'private')
         return 'https://assets.vrchat.com/www/images/default_private_image.png';
       else if (event.type === 'friend-location')
