@@ -40,8 +40,8 @@
     <v-card
         class="mx-auto overflow-y-auto"
         color="transparent"
-        max-width="400"
-        :height="paginationPageCount > 1 ? 279 : 320"
+        max-width="100%"
+        :height="listHeight"
         :style="{ 'margin-bottom': paginationPageCount > 1 ? '41px' : '0px'  }"
         tile
     >
@@ -252,6 +252,12 @@ export default {
             else
               return false
           });
+    },
+    listHeight() {
+      const maxHeight = this.paginationPageCount > 1 ? 280 : 320;
+      const removeHeight = this.paginationPageCount <= 1 ? 280 : 320;
+
+      return `max(calc(100vh - ${removeHeight}px), ${maxHeight}px)`;
     },
     filteredEvents() {
       return this.searchedEvents

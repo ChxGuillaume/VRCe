@@ -2,8 +2,8 @@
   <v-card
       class="mx-auto pt-4 overflow-y-auto"
       color="transparent"
-      max-width="400"
-      height="384"
+      max-width="100%"
+      height="max(calc(100vh - 216px), 384px)"
       tile
   >
     <v-row class="mx-0">
@@ -23,10 +23,12 @@
             v-for="icon of Icons"
             :key="icon.id"
             cols="3"
+            sm="2"
+            class="text-center"
             style="position: relative; cursor: pointer"
         >
           <div
-              class="pa-1 rounded-circle darken-2"
+              class="d-inline-block pa-1 rounded-circle darken-2"
               :class="{ 'green': icon.current, 'grey': !icon.current }"
               style="position: relative; cursor: pointer"
               @click="changeIcon($event, icon.url)"
@@ -69,10 +71,13 @@
             v-for="picture of Pictures"
             :key="picture.id"
             cols="6"
+            sm="4"
+            md="3"
+            class="text-center"
             style="position: relative; cursor: pointer"
         >
           <div
-              class="pa-1 rounded darken-2"
+              class="d-inline-block pa-1 rounded darken-2"
               :class="{ 'green': picture.current, 'grey': !picture.current }"
               style="position: relative; cursor: pointer"
               @click="changePicture($event, picture.url)"
@@ -80,7 +85,7 @@
             <v-btn fab absolute x-small class="deleteBtn" color="red" @click="delete_file_id = picture.id">
               <v-icon small>delete</v-icon>
             </v-btn>
-            <v-img class="rounded" :src="picture.url" height="91">
+            <v-img class="rounded" :src="picture.url" width="162" height="91">
               <template v-slot:placeholder>
                 <v-row
                     class="fill-height ma-0"

@@ -168,8 +168,8 @@
             <v-card
                 class="mx-auto overflow-y-auto"
                 color="transparent"
-                max-width="400"
-                height="320"
+                max-width="100%"
+                height="max(calc(100vh - 280px), 320px)"
                 tile
             >
               <v-list-item

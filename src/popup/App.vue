@@ -20,9 +20,9 @@ html {
 
 body {
   margin: auto;
-  width: 400px;
+  width: max(100vw, 400px);
   min-height: 72px;
-  max-height: 600px;
+  max-height: max(100vh, 600px);
 }
 
 * {

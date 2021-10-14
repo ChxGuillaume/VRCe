@@ -11,8 +11,8 @@ Simple extension to visualize and manage your VRChat experience.
 Friends, Worlds, Events, Gallery, Moderation (Blocked/Muted Users)
 
 # 🔗 Available on Webstores
-- Chrome: https://chrome.google.com/webstore/detail/vrc-api-visualizer/
 - Firefox: https://addons.mozilla.org/en-US/firefox/addon/vrc-e/
+- Chrome: https://chrome.google.com/webstore/detail/vrce-manage-your-vrchat-e/ifehdekkdpiljkefhbhabpngnjdhloia
 
 # ▶️ How to run
 

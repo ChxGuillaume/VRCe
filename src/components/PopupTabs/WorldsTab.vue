@@ -2,8 +2,8 @@
   <v-card
       class="mx-auto pt-4 overflow-y-auto"
       color="transparent"
-      max-width="400"
-      height="384"
+      max-width="100%"
+      height="max(calc(100vh - 216px), 384px)"
       tile
   >
     <h1 v-if="!instances.length" class="mt-16 text-h5 text-center">
