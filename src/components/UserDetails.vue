@@ -220,7 +220,6 @@ export default {
           .then(response => response.json())
           .then(data => {
             user.world = data;
-            this.refreshTable();
           })
     },
     setUserData(user) {
@@ -291,7 +290,8 @@ export default {
       user.langagues = user.tags.filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
     },
     setLastLogin(user) {
-      user.last_login = moment(user.last_login).format('YYYY-MM-DD HH:mm:ss');
+      if (!user.last_login) user.last_login = 'Unavailable';
+      else user.last_login = moment(user.last_login).format('YYYY-MM-DD HH:mm:ss');
     },
     setLastPlatform(user) {
       switch (user.last_platform) {

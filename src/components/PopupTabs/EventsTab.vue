@@ -131,12 +131,14 @@
                     </span>
                     <span v-else class="d-block mt-1">Private</span>
                   </h3>
-                  <h3 v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)"
-                      class="subtitle-1">
+                  <h3
+                      v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)"
+                      class="subtitle-1"
+                  >
                     {{ event_types.find(e => event.type === e.value).text }}
-                    <span v-if="event.content.user" class="d-block mt-1 caption">{{
-                        event.content.user.displayName
-                      }}</span>
+                    <span v-if="event.content.user" class="d-block mt-1 caption">
+                      {{ event.content.user.displayName }}
+                    </span>
                   </h3>
                   <h3 v-else-if="event.type === 'notification'" class="subtitle-1">
                 <span class="d-block mt-1">
@@ -158,9 +160,11 @@
             </v-list-item-content>
           </v-col>
           <v-expand-transition>
-            <v-col v-if="['friend-update', 'user-update'].includes(event.type) && show_changes_items === event.uid"
-                   cols="12"
-                   class="pa-0">
+            <v-col
+                v-if="['friend-update', 'user-update'].includes(event.type) && show_changes_items === event.uid"
+                cols="12"
+                class="pa-0"
+            >
               <previous-user-changes
                   :user="event.content.user"
                   :previous_user="event.content.previous_user"

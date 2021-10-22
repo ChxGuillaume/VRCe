@@ -2,15 +2,18 @@
   <v-container fluid class="pa-0">
     <v-tooltip v-if="user_data.id" right>
       <template v-slot:activator="{ on, attrs }">
-        <v-btn
-            fixed top left fab
-            color="red"
-            v-bind="attrs"
-            v-on="on"
-            @click="logoutFromVRChat"
-        >
-          <v-icon>logout</v-icon>
-        </v-btn>
+        <v-scale-transition origin="center">
+          <v-btn
+              v-if="!hideFab"
+              fixed top left fab
+              color="red"
+              v-bind="attrs"
+              v-on="on"
+              @click="logoutFromVRChat"
+          >
+            <v-icon>logout</v-icon>
+          </v-btn>
+        </v-scale-transition>
       </template>
       <span>Disconnect From VRChat Home</span>
     </v-tooltip>
@@ -279,7 +282,7 @@
           </v-col>
         </v-row>
       </v-tab-item>
-      <v-tab-item class="pt-3">
+      <v-tab-item>
         <player-moderation-tab :logged_in="!!user_data"/>
       </v-tab-item>
       <v-tab-item class="pt-3">
@@ -395,7 +398,8 @@ export default {
     worlds: {},
     need_login_form: false,
     need_visit_vrc_home_form: false,
-    show_table: true
+    show_table: true,
+    scroll_top: 0
   }),
   computed: {
     ranksStats() {
@@ -427,6 +431,9 @@ export default {
     },
     isLoading() {
       return !this.user_data.id || this.friends.length < this.user_data.friends.length;
+    },
+    hideFab() {
+      return (this.scroll_top) > 150
     }
   },
   mounted() {
@@ -435,6 +442,10 @@ export default {
     this.friends_shown_headers = this.friendsHeadersSelectItems.filter(e => !e.includes('Tag') && !e.includes('Link'));
 
     this.fetchUser();
+
+    document.addEventListener('scroll', () => {
+      this.scroll_top = document.documentElement.scrollTop || document.body.scrollTop
+    })
   },
   methods: {
     fetchUser() {

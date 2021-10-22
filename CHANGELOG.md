@@ -1,3 +1,9 @@
+# 1.5.2
+
+Update:
+- Made Popup VCards size dynamic (Mostly for Mobile users of the Extension)
+- Remade of the Moderation page UI
+
 # 1.5.1
 
 Fix:
