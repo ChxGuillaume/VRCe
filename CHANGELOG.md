@@ -1,8 +1,14 @@
 # 1.5.2
 
+Added:
+- Friend can now be favorited
+- Get notified on favorited friends online
+
 Update:
 - Made Popup VCards size dynamic (Mostly for Mobile users of the Extension)
 - Remade of the Moderation page UI
+- Remade UI of Friends Tab
+- Disable Gallery tab for Non VRCPlus Users
 
 # 1.5.1
 
