@@ -51,12 +51,13 @@
                 </span>
               </h4>
 
-              <v-tooltip v-if="instance.location !== 'private'" color="primary" left>
+              <v-tooltip v-if="instance.location !== 'private'" color="grey darken-2" left>
                 <template v-slot:activator="{ on, attrs }">
-                  <v-btn icon absolute small
-                         color="grey darken-2" style="top:6px;right:6px;"
-                         @click="sendInviteToInstance(instance)"
-                         v-bind="attrs" v-on="on"
+                  <v-btn
+                      icon absolute small
+                      color="grey darken-2" style="top:6px;right:6px;"
+                      @click="sendInviteToInstance(instance)"
+                      v-bind="attrs" v-on="on"
                   >
                     <v-icon small>add_location_alt</v-icon>
                   </v-btn>
@@ -64,12 +65,13 @@
                 <span>Send me invite to Instance</span>
               </v-tooltip>
 
-              <v-tooltip color="primary" left>
+              <v-tooltip color="grey darken-2" left>
                 <template v-slot:activator="{ on, attrs }">
-                  <v-btn icon absolute small
-                         color="grey darken-2" style="bottom:6px;right:6px;"
-                         @click="changeShowFriendsState(instance)"
-                         v-bind="attrs" v-on="on"
+                  <v-btn
+                      icon absolute small
+                      color="grey darken-2" style="bottom:6px;right:6px;"
+                      @click="changeShowFriendsState(instance)"
+                      v-bind="attrs" v-on="on"
                   >
                     <v-icon small>{{ instance.show_friends ? 'remove' : 'add' }}</v-icon>
                   </v-btn>
@@ -88,28 +90,9 @@
                 class="px-0"
                 :style="{ background: friend.status.color + '33' }"
                 @click="userDetails(friend.id)"
+                @click.right.prevent="userMenu($event, friend)"
             >
-              <v-card width="100" color="transparent" class="py-2" flat>
-                <v-img
-                    class="mx-auto rounded"
-                    :src="friend.profilePicOverride ? friend.profilePicOverride : friend.currentAvatarThumbnailImageUrl"
-                    height="50"
-                    width="67"
-                >
-                  <template v-slot:placeholder>
-                    <v-row
-                        class="fill-height ma-0"
-                        align="center"
-                        justify="center"
-                    >
-                      <v-progress-circular
-                          indeterminate
-                          color="grey lighten-5"
-                      />
-                    </v-row>
-                  </template>
-                </v-img>
-              </v-card>
+              <friend-picture :friend="friend" />
 
               <v-list-item-content>
                 <v-row class="mx-0 align-center">
@@ -145,8 +128,10 @@
 </template>
 
 <script>
+import FriendPicture from "../PopupComponents/FriendPicture";
 export default {
   name: 'WorldsTab',
+  components: {FriendPicture},
   props: {
     friends: {
       type: Array,
@@ -276,6 +261,9 @@ export default {
     },
     userDetails(friend_id) {
       this.$emit('user-details', friend_id)
+    },
+    userMenu($event, friend) {
+      this.$emit('user-menu', {$event, friend})
     },
     refreshFriends() {
       this.refresh_friends = false;

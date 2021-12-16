@@ -8,7 +8,11 @@ let events = [];
 let socket, authToken, dontRetry = null;
 let settings = localStorage.getItem('settings')
     ? JSON.parse(localStorage.getItem('settings'))
-    : {notify_online: false, notify_notifications: false};
+    : {notify_online: false, notify_online_favorited: false, notify_notifications: false};
+
+let favorite_friends = localStorage.getItem('favorite_friends')
+    ? JSON.parse(localStorage.getItem('favorite_friends'))
+    : [];
 
 const events_db = new Dexie('events_db');
 events_db.version(2).stores({
@@ -101,7 +105,10 @@ function handleVRCEvent(ev) {
     events.push(event);
     events_db.events.add(event);
 
-    if (settings.notify_online && event.type === 'friend-online')
+    if (
+        (settings.notify_online && event.type === 'friend-online')
+        || (settings.notify_online_favorited && event.type === 'friend-online' && favorite_friends.includes(event.content.user.id))
+    )
         chrome.notifications.create({
             title: 'Friend Online',
             message: event.content.user.displayName,
@@ -129,6 +136,10 @@ function parseContent(content) {
 
 function saveSettings() {
     localStorage.setItem('settings', JSON.stringify(settings))
+}
+
+function saveFavoriteFriends() {
+    localStorage.setItem('favorite_friends', JSON.stringify(favorite_friends))
 }
 
 async function notifyNotification(event) {
@@ -184,7 +195,7 @@ async function notifyNotificationOptions(event) {
 
         port.onDisconnect.addListener(() => {
             allPorts.splice(allPorts.indexOf(port), 1)
-        })
+        });
 
         port.postMessage({type: 'all_events', events});
     } else if (port.name === 'popup-settings') {
@@ -193,9 +204,25 @@ async function notifyNotificationOptions(event) {
         port.onMessage.addListener(settingsMsg => {
             settings = settingsMsg;
             saveSettings();
-        })
+        });
     } else if (port.name === 'popup-app') {
         init();
+
+        port.postMessage({type: 'favorite_friends', favorite_friends});
+
+        port.onMessage.addListener(msg => {
+            if (msg.type === 'toggleFavoriteFriend') {
+                const userId = msg.user_id;
+                const index = favorite_friends.indexOf(userId);
+
+                if (index === -1) favorite_friends.push(userId);
+                else favorite_friends.splice(index, 1);
+
+                saveFavoriteFriends();
+
+                port.postMessage({type: 'favorite_friends', favorite_friends});
+            }
+        });
     }
 });
 

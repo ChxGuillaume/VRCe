@@ -173,56 +173,94 @@
                 tile
             >
               <v-list-item
-                  v-for="friend of sortedFriends"
-                  :key="friend.id"
-                  class="pl-0"
-                  style="height: 75px;"
-                  :style="{ background: friend.status.color + '33' }"
-                  @click="fetchUserDetails($event, friend.id)"
+                  v-for="[index, friendStatusGroup] of Object.entries(groupedSortedFriends)"
+                  :key="friendStatusGroup.power"
+                  class="pa-0 d-block"
+                  :class="{ 'mb-6': groupedSortedFriends.length !== (parseInt(index) + 1) }"
               >
-                <v-img :src="friend.profilePicOverride ? friend.profilePicOverride : friend.currentAvatarThumbnailImageUrl" max-width="100" height="75">
-                  <template v-slot:placeholder>
-                    <v-row
-                        class="fill-height ma-0"
-                        align="center"
-                        justify="center"
-                    >
-                      <v-progress-circular
-                          indeterminate
-                          color="grey lighten-5"
-                      />
-                    </v-row>
-                  </template>
-                </v-img>
+                <v-card>
+                  <div class="py-3 d-flex justify-space-around">
+                    <v-row class="mx-0 align-center">
+                      <v-col cols="12" class="text-center d-flex align-center justify-center"
+                             style="position:relative;">
+                        <v-chip x-small class="mr-3" :color="friendStatusGroup.color"/>
 
-                <v-list-item-content>
-                  <v-row class="mx-0 align-center">
-                    <v-col cols="9" class="text-center">
-                      <h3 class="subtitle-1">{{ friend.displayName }}</h3>
-                      <h4 class="caption mt-2">{{ friend.status.name }}</h4>
-                    </v-col>
-                    <v-col cols="3" class="d-flex align-center justify-end">
-                      <v-tooltip left color="primary">
-                        <template v-slot:activator="{ on, attrs }">
-                          <v-btn
-                              v-if="friend.world_link"
-                              v-bind="attrs" v-on="on"
-                              icon
-                              @click="sendInviteToInstance(friend.location)"
-                          >
-                            <v-icon>add_location_alt</v-icon>
-                          </v-btn>
-                        </template>
-                        <span>Send me invite to Instance</span>
-                      </v-tooltip>
-                    </v-col>
-                  </v-row>
-                </v-list-item-content>
+                        <h3 class="d-inline-block subtitle-1"
+                            style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+                          {{ friendStatusGroup.name }}
+                        </h3>
+
+                        <v-tooltip color="grey darken-2" left>
+                          <template v-slot:activator="{ on, attrs }">
+                            <v-btn
+                                icon absolute small
+                                class="my-auto"
+                                color="grey darken-2" style="bottom:0;top:0;right:6px;"
+                                @click="closedGroupsToggle(friendStatusGroup.power)"
+                                v-bind="attrs" v-on="on"
+                            >
+                              <v-icon small>{{
+                                  !closed_groups.includes(friendStatusGroup.power) ? 'remove' : 'add'
+                                }}
+                              </v-icon>
+                            </v-btn>
+                          </template>
+                          <span>{{
+                              !closed_groups.includes(friendStatusGroup.power) ? 'Reduce' : 'Expand'
+                            }} Group</span>
+                        </v-tooltip>
+                      </v-col>
+                    </v-row>
+                  </div>
+
+                  <v-expand-transition>
+                    <div v-if="!closed_groups.includes(friendStatusGroup.power)">
+                      <v-list-item
+                          v-for="friend of friendStatusGroup.friends"
+                          :key="friend.id"
+                          class="px-0"
+                          :style="{ background: friend.status.color + '33' }"
+                          @click="fetchUserDetails($event, friend.id)"
+                          @click.right.prevent="openFriendMenu($event, friend)"
+                      >
+                        <friend-picture :friend="friend"/>
+
+                        <v-list-item-content>
+                          <v-row class="mx-0 align-center">
+                            <v-col cols="9" class="text-center">
+                              <h3 class="subtitle-1">{{ friend.displayName }}</h3>
+                            </v-col>
+                            <v-col cols="3" class="d-flex align-center justify-end">
+                              <v-tooltip left color="grey darken-4">
+                                <template v-slot:activator="{ on, attrs }">
+                                  <v-btn
+                                      v-if="friend.world_link"
+                                      v-bind="attrs" v-on="on"
+                                      icon
+                                      @click="sendInviteToInstance(friend.location)"
+                                  >
+                                    <v-icon>add_location_alt</v-icon>
+                                  </v-btn>
+                                </template>
+                                <span>Send me invite to Instance</span>
+                              </v-tooltip>
+                            </v-col>
+                          </v-row>
+                        </v-list-item-content>
+                      </v-list-item>
+                    </div>
+                  </v-expand-transition>
+                </v-card>
               </v-list-item>
             </v-card>
           </v-tab-item>
           <v-tab-item value="worlds">
-            <worlds-tab :friends="friends" :worlds="worlds" @user-details="fetchUserDetails(null, $event)"/>
+            <worlds-tab
+                :friends="friends"
+                :worlds="worlds"
+                @user-details="fetchUserDetails(null, $event)"
+                @user-menu="openFriendMenu($event.$event, $event.friend)"
+            />
           </v-tab-item>
           <v-tab-item value="events">
             <events-tab :friends="friends"/>
@@ -500,8 +538,31 @@
         bottom text color="primary"
         transition="slide-y-reverse-transition" style="bottom:56px;"
     >
-      <v-icon color="primary" left>add_location_alt</v-icon> Invite Sent.
+      <v-icon color="primary" left>add_location_alt</v-icon>
+      Invite Sent.
     </v-snackbar>
+
+    <v-menu
+        v-model="friend_menu"
+        :position-x="menu_pos.x"
+        :position-y="menu_pos.y"
+        transition="slide-y-transition"
+        offset-y
+        fixed
+    >
+      <v-list class="pa-0">
+        <v-list-item @click="toggleFavoriteFriend">
+          <v-list-item-icon>
+            <v-icon>
+              {{ friend_menu_item.favorited ? 'star_outline' : 'star' }}
+            </v-icon>
+          </v-list-item-icon>
+          <v-list-item-title>
+            {{ friend_menu_item.favorited ? 'Unfavorite' : 'Favorite' }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
 
     <v-bottom-navigation v-if="hasUserData" v-model="bottom_navigator" shift fixed grow color="primary">
       <v-btn height="100%" value="friends" color="transparent">
@@ -543,10 +604,11 @@ import EventsTab from "./PopupTabs/EventsTab";
 import SettingsTab from "./PopupTabs/SettingsTab";
 import WorldsTab from "./PopupTabs/WorldsTab";
 import GalleryTab from "./PopupTabs/GalleryTab";
+import FriendPicture from "./PopupComponents/FriendPicture";
 
 export default {
   name: 'Popup',
-  components: {GalleryTab, WorldsTab, SettingsTab, EventsTab},
+  components: {FriendPicture, GalleryTab, WorldsTab, SettingsTab, EventsTab},
   data() {
     return {
       toolbox: false,
@@ -555,13 +617,21 @@ export default {
       cloudflare_error: false,
       user_data: {},
       friends: [],
+      favorite_friends: [],
       friend_search: '',
       user_details: {},
       worlds: [],
       drawer: false,
       no_session_dialog: false,
       bottom_navigator: 'friends',
-      invite_sent: false
+      invite_sent: false,
+      closed_groups: [0],
+      friend_menu: false,
+      friend_menu_item: {},
+      menu_pos: {
+        x: 0,
+        y: 0
+      }
     }
   },
   computed: {
@@ -582,6 +652,23 @@ export default {
         return result;
       });
     },
+    groupedSortedFriends() {
+      return Object.values(this.sortedFriends.reduce((acc, cur) => {
+        if (!acc[cur.status.power])
+          acc[cur.status.power] = {
+            power: cur.status.power,
+            color: cur.status.color,
+            name: cur.status.name,
+            friends: []
+          };
+
+        acc[cur.status.power].friends.push(cur);
+
+        return acc;
+      }, {})).sort((a, b) => {
+        return b.power - a.power;
+      });
+    },
     hasUserData() {
       return !this.fetching && this.user_data.id;
     }
@@ -591,6 +678,12 @@ export default {
 
     this.port = (browser.runtime || chrome.extension).connect({
       name: 'popup-app'
+    });
+
+    this.port.onMessage.addListener((msg) => {
+      if (msg.type === 'favorite_friends') {
+        this.favorite_friends = msg.favorite_friends;
+      }
     });
 
     this.bottom_navigator = localStorage.getItem('default_tab') || 'friends';
@@ -736,6 +829,7 @@ export default {
       this.setWorldLink(user);
       this.setLastPlatform(user);
 
+      user.favorited = this.favorite_friends.includes(user.id);
       user.location_type = this.getLocationType(user.location);
       user.location_region = this.getLocationRegion(user.location);
     },
@@ -850,6 +944,31 @@ export default {
 
       this.$nextTick(() => {
         this.drawer = true;
+      });
+    },
+    openFriendMenu(e, friend) {
+      this.friend_menu = false;
+
+      this.menu_pos.x = e.clientX;
+      this.menu_pos.y = e.clientY;
+      this.friend_menu_item = friend;
+
+      this.$nextTick(() => {
+        this.friend_menu = true;
+      });
+    },
+    closedGroupsToggle(power) {
+      if (this.closed_groups.includes(power))
+        this.closed_groups.splice(this.closed_groups.indexOf(power), 1);
+      else
+        this.closed_groups.push(power);
+    },
+    toggleFavoriteFriend() {
+      this.friend_menu_item.favorited = !this.friend_menu_item.favorited;
+
+      this.port.postMessage({
+        type: 'toggleFavoriteFriend',
+        user_id: this.friend_menu_item.id
       });
     }
   }

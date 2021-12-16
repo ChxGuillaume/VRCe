@@ -32,6 +32,21 @@
           </v-list-item-content>
         </template>
       </v-list-item>
+      <v-list-item value="notify_online_favorited">
+        <template v-slot:default="{ active }">
+          <v-list-item-action>
+            <v-checkbox
+                :input-value="active"
+                color="primary"
+            />
+          </v-list-item-action>
+
+          <v-list-item-content>
+            <v-list-item-title>Notify on Favorite Friend Connect</v-list-item-title>
+            <v-list-item-subtitle>Get notified when a favorited friend launch VRChat</v-list-item-subtitle>
+          </v-list-item-content>
+        </template>
+      </v-list-item>
       <v-list-item value="notify_notifications">
         <template v-slot:default="{ active }">
           <v-list-item-action>
