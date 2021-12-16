@@ -265,7 +265,7 @@
           <v-tab-item value="events">
             <events-tab :friends="friends"/>
           </v-tab-item>
-          <v-tab-item value="gallery">
+          <v-tab-item value="gallery" :disabled="!isUserVRCPlus">
             <gallery-tab :user_data="user_data" @new-user-data="user_data = $event"/>
           </v-tab-item>
           <v-tab-item value="settings">
@@ -583,7 +583,7 @@
         <v-icon>history</v-icon>
       </v-btn>
 
-      <v-btn height="100%" value="gallery" color="transparent">
+      <v-btn height="100%" value="gallery" color="transparent" :disabled="!isUserVRCPlus">
         <span>Gallery</span>
 
         <v-icon>collections</v-icon>
@@ -671,6 +671,9 @@ export default {
     },
     hasUserData() {
       return !this.fetching && this.user_data.id;
+    },
+    isUserVRCPlus() {
+      return this.hasUserData && this.user_data.tags.includes('system_supporter');
     }
   },
   mounted() {
