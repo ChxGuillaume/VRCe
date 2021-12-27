@@ -634,6 +634,17 @@ export default {
       }
     }
   },
+  watch: {
+    friend_search: {
+      handler(friend_search) {
+        if (friend_search)
+          this.closed_groups.splice(this.closed_groups.indexOf(0), 1)
+        else if (!this.closed_groups.includes(0))
+          this.closed_groups.push(0)
+      },
+      deep: true
+    }
+  },
   computed: {
     sortedFriends() {
       const filteredFriends = this.friends.filter(e => {

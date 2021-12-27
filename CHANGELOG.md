@@ -1,3 +1,8 @@
+# 1.5.3
+
+Update:
+- Improved search UX in friends list
+
 # 1.5.2
 
 Added:
