@@ -809,6 +809,8 @@ export default {
         this.user_data = {};
         this.friends = [];
         this.fetchUser();
+
+        this.port.postMessage({type: 'logout'});
       })
     },
     goToVRCLogin() {

@@ -63,6 +63,49 @@
         </template>
       </v-list-item>
     </v-list-item-group>
+    <v-row class="ma-0">
+      <v-col cols="12" class="d-flex justify-center">
+        <v-btn color="red" @click="delete_data_dialog = true">
+          Clear Data
+        </v-btn>
+      </v-col>
+    </v-row>
+
+    <v-dialog
+        v-model="delete_data_dialog"
+        persistent
+        max-width="290"
+        overlay-opacity="0.9"
+    >
+      <v-card>
+        <v-card-title class="text-h5">
+          Are you sure?
+        </v-card-title>
+        <v-card-text class="pt-2">
+          By clicking the <span class="red--text text-uppercase">Delete All</span> button you will delete all stored
+          events.
+          <br><br>
+          Those events can't be recovered.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+              color="primary darken-1"
+              text
+              @click="delete_data_dialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+              color="red darken-1"
+              text
+              @click="clearEvents"
+          >
+            Delete All
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
@@ -73,12 +116,13 @@ export default {
     return {
       settings: [],
       tabs: [
-        { text: 'Friends', value: 'friends' },
-        { text: 'Worlds', value: 'worlds' },
-        { text: 'Events', value: 'events' }
+        {text: 'Friends', value: 'friends'},
+        {text: 'Worlds', value: 'worlds'},
+        {text: 'Events', value: 'events'}
       ],
       default_tab: '',
-      port: null
+      port: null,
+      delete_data_dialog: false,
     }
   },
   mounted() {
@@ -96,7 +140,17 @@ export default {
   },
   methods: {
     saveSettings() {
-      this.port.postMessage(Object.fromEntries(this.settings.map(e => [e, true])));
+      this.port.postMessage({
+        type: 'update_settings',
+        settings: Object.fromEntries(this.settings.map(e => [e, true]))
+      });
+    },
+    clearEvents() {
+      this.delete_data_dialog = false;
+
+      this.port.postMessage({
+        type: 'clear_events'
+      });
     },
     saveDefaultTab() {
       localStorage.setItem('default_tab', this.default_tab);

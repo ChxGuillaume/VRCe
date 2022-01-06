@@ -1,7 +1,15 @@
 # 1.5.3
 
+Added:
+- VRChat Homme connection status (Notify when offline / Click to connect)
+
 Update:
 - Improved search UX in friends list
+- Button in settings to clear events
+
+Fix:
+- Missing Invite Request Response notification type (was showing "Not Set?")
+- Changed Events fetching method to use the VRC Home URI
 
 # 1.5.2
 
