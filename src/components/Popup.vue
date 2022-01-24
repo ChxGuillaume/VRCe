@@ -605,6 +605,7 @@ import SettingsTab from "./PopupTabs/SettingsTab";
 import WorldsTab from "./PopupTabs/WorldsTab";
 import GalleryTab from "./PopupTabs/GalleryTab";
 import FriendPicture from "./PopupComponents/FriendPicture";
+import {mapActions} from "vuex";
 
 export default {
   name: 'Popup',
@@ -688,6 +689,14 @@ export default {
     }
   },
   mounted() {
+    this.fetchUserData()
+        .then(() => {
+          console.log('Fetched user data');
+        })
+        .catch(() => {
+          console.log('Error Fetching user data');
+        });
+
     this.fetchUser();
 
     this.port = (browser.runtime || chrome.extension).connect({
@@ -703,6 +712,9 @@ export default {
     this.bottom_navigator = localStorage.getItem('default_tab') || 'friends';
   },
   methods: {
+    ...mapActions('user', {
+      fetchUserData: 'fetchData'
+    }),
     fetchUser() {
       this.fetching = true;
 

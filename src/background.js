@@ -106,9 +106,7 @@ function createSocket(url) {
 function setExtensionStatus(online = true) {
     if (online) {
         chrome.browserAction.setIcon({
-            path: {
-                '19': 'icons/vrce-logo-19_x_19.png', '38': 'icons/vrce-logo-38_x_38.png'
-            }
+            path: {'19': 'icons/vrce-logo-19_x_19.png', '38': 'icons/vrce-logo-38_x_38.png'}
         });
 
         chrome.browserAction.setTitle({title: 'VRCe - Online'});
@@ -121,9 +119,7 @@ function setExtensionStatus(online = true) {
         });
 
         chrome.browserAction.setIcon({
-            path: {
-                '19': 'icons/vrce-logo-19_x_19-offline.png', '38': 'icons/vrce-logo-38_x_38-offline.png'
-            }
+            path: {'19': 'icons/vrce-logo-19_x_19-offline.png', '38': 'icons/vrce-logo-38_x_38-offline.png'}
         });
 
         chrome.browserAction.setTitle({title: 'VRCe - Offline'});
@@ -179,7 +175,6 @@ function saveFavoriteFriends() {
 }
 
 async function notifyNotification(event) {
-    console.log(event)
     chrome.notifications.create(await notifyNotificationOptions(event));
 }
 

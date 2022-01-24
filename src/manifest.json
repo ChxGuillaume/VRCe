@@ -5,7 +5,9 @@
   "default_locale": "en",
   "permissions": [
     "cookies",
+    "background",
     "notifications",
+    "unlimitedStorage",
     "https://vrchat.com/*"
   ],
   "icons": {
