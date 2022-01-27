@@ -65,21 +65,36 @@ const actions = {
                     .then(data => {
                         if (!data.error) {
                             commit('setData', data);
+                            commit('setLoggedIn', true);
                             resolve();
-                        } else reject();
-                    });
+                        } else reject(data.error);
+                    })
+                    .catch(error => reject(error));
             else resolve();
         })
-    }
+    },
+    logout({commit}) {
+        return new Promise((resolve, reject) => {
+            fetch('https://vrchat.com/api/1/logout', {
+                method: 'PUT'
+            }).then(() => {
+                commit('logout');
+                resolve();
+            }).catch(error => reject(error));
+        })
+    },
 }
 
 const mutations = {
     setData(state, data) {
         state.data = data;
-        console.log(data)
     },
     setLoggedIn(state, logged_in) {
         state.logged_in = logged_in;
+    },
+    logout(state) {
+        state.logged_in = false;
+        state.data = {};
     }
 }
 

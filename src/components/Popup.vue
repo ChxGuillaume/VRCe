@@ -605,7 +605,8 @@ import SettingsTab from "./PopupTabs/SettingsTab";
 import WorldsTab from "./PopupTabs/WorldsTab";
 import GalleryTab from "./PopupTabs/GalleryTab";
 import FriendPicture from "./PopupComponents/FriendPicture";
-import {mapActions} from "vuex";
+import {mapActions, mapMutations, mapState} from "vuex";
+import formatFriendData from "../store/utils/formatFriendData";
 
 export default {
   name: 'Popup',
@@ -614,11 +615,7 @@ export default {
     return {
       toolbox: false,
       fetching: true,
-      logged_in: false,
       cloudflare_error: false,
-      user_data: {},
-      friends: [],
-      favorite_friends: [],
       friend_search: '',
       user_details: {},
       worlds: [],
@@ -647,6 +644,14 @@ export default {
     }
   },
   computed: {
+    ...mapState('user', {
+      user_data: state => state.data,
+      logged_in: state => state.logged_in,
+    }),
+    ...mapState('friends', {
+      friends: state => state.friends,
+      favorite_friends: state => state.favorite_friends,
+    }),
     sortedFriends() {
       const filteredFriends = this.friends.filter(e => {
         const displayName = e.displayName.toLowerCase();
@@ -690,22 +695,20 @@ export default {
   },
   mounted() {
     this.fetchUserData()
-        .then(() => {
-          console.log('Fetched user data');
-        })
-        .catch(() => {
-          console.log('Error Fetching user data');
+        .then(() => this.fetchFriendsData())
+        .catch((e) => console.log('Error Fetching user data', e))
+        .finally(() => {
+          console.log(this.user_data)
+          this.fetching = false;
         });
-
-    this.fetchUser();
 
     this.port = (browser.runtime || chrome.extension).connect({
       name: 'popup-app'
     });
 
     this.port.onMessage.addListener((msg) => {
-      if (msg.type === 'favorite_friends') {
-        this.favorite_friends = msg.favorite_friends;
+      if (msg?.type === 'favorite_friends') {
+        this.setFavoriteFriends(msg?.favorite_friends);
       }
     });
 
@@ -713,31 +716,15 @@ export default {
   },
   methods: {
     ...mapActions('user', {
-      fetchUserData: 'fetchData'
+      fetchUserData: 'fetchData',
+      logout: 'logout',
     }),
-    fetchUser() {
-      this.fetching = true;
-
-      fetch('https://vrchat.com/api/1/auth/user')
-          .then(response => {
-            if (response.status === 503)
-              this.cloudflare_error = true;
-            else
-              return response.json();
-          })
-          .then(data => {
-            this.fetching = false;
-
-            if (!data.error) {
-              this.logged_in = true;
-              this.user_data = data;
-
-              this.fetchFriends();
-            } else if (data.error.status_code === 401) {
-              this.need_login_form = true;
-            }
-          });
-    },
+    ...mapActions('friends', {
+      fetchFriendsData: 'fetchData',
+    }),
+    ...mapMutations('friends', {
+      setFavoriteFriends: 'setFavoriteFriends',
+    }),
     fetchUserDetails(ev, friend_id) {
       if (ev && ['I', 'SPAN'].includes(ev.target.nodeName))
         return;
@@ -748,7 +735,7 @@ export default {
       fetch(`https://vrchat.com/api/1/users/${friend_id}`)
           .then(response => response.json())
           .then(data => {
-            this.setUserData(data);
+            formatFriendData(data);
             this.user_details = data;
 
             if (data.worldId && !['offline'].includes(data.worldId))
@@ -785,45 +772,18 @@ export default {
         };
       }
     },
-    fetchFriends(offline = false, offset = 0) {
-      const count = 100;
-
-      fetch(`https://vrchat.com/api/1/auth/user/friends?offline=${offline}&n=${count}&offset=${offset}`)
-          .then(res => res.json())
-          .then(data => {
-            data.forEach(friend => this.setUserData(friend));
-
-            data.forEach(friend => {
-              const splicedLocation = friend.location.split(':');
-
-              if (splicedLocation && splicedLocation[0].startsWith('wrld_'))
-                this.fetchWorld(splicedLocation[0]);
-            });
-
-            this.friends = this.friends.concat(data.filter(e => !this.friends.find(s => e.id === s.id)));
-
-            if (data.length === count)
-              this.fetchFriends(offline, offset + count);
-            else if (!offline && data.length !== count)
-              this.fetchFriends(true, 0);
-          })
-    },
     sendInviteToInstance(location) {
       fetch(`https://vrchat.com/api/1/instances/${location}/invite`, {
         method: 'POST'
       }).then(() => this.invite_sent = true)
     },
     logoutFromVRChat() {
-      fetch('https://vrchat.com/api/1/logout', {
-        method: 'PUT'
-      }).then(() => {
-        this.logged_in = false;
-        this.user_data = {};
-        this.friends = [];
-        this.fetchUser();
+      this.logout()
+          .then(() => {
+            this.friends = [];
 
-        this.port.postMessage({type: 'logout'});
-      })
+            this.port.postMessage({type: 'logout'});
+          });
     },
     goToVRCLogin() {
       chrome.tabs.create({url: `https://vrchat.com/home/login`});
@@ -844,125 +804,6 @@ export default {
     openVRCCurrentSessionInVR(location = null) {
       const url = location ? `vrchat://launch?ref=vrchat.com&id=${location}` : `vrchat://launch?ref=vrchat.com`;
       chrome.tabs.create({url});
-    },
-    setUserData(user) {
-      if (this.user_data.activeFriends.includes(user.id))
-        user.location = '';
-
-      this.setRank(user);
-      this.setStatus(user);
-      this.setBioLinks(user);
-      this.setLastLogin(user);
-      this.setWorldIcon(user);
-      this.setWorldLink(user);
-      this.setLastPlatform(user);
-
-      user.favorited = this.favorite_friends.includes(user.id);
-      user.location_type = this.getLocationType(user.location);
-      user.location_region = this.getLocationRegion(user.location);
-    },
-    setRank(user) {
-      const tags = user.tags
-
-      if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF69B4', name: 'Legend', power: 0}
-      } else if (tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#5D88BB', name: 'Veteran', power: 1}
-      } else if (tags.includes('system_trust_veteran') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#8143E6', name: 'Trusted', power: 2}
-      } else if (tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF7B42', name: 'Known', power: 3}
-      } else if (tags.includes('system_trust_known')) {
-        user.rank = {color: '#2BCF5C', name: 'User', power: 4}
-      } else if (tags.includes('system_trust_basic')) {
-        user.rank = {color: '#1778FF', name: 'New User', power: 5}
-      } else {
-        user.rank = {color: '#CCCCCC', name: 'Visitor', power: 6, light: true}
-      }
-    },
-    setStatus(user) {
-      if (!user.location)
-        user.status = {color: '#ebd23b', name: 'Active', power: 1, light: true};
-      else if (user.state && user.state === 'offline')
-        user.status = {color: '#CCCCCC', name: 'Offline', power: 0, light: true};
-      else
-        switch (user.status) {
-          case 'join me':
-            user.status = {color: '#42caff', name: 'Join Me', power: 5};
-            break;
-          case 'active':
-            user.status = {color: '#60ad5e', name: 'Online', power: 4};
-            break;
-          case 'ask me':
-            user.status = {color: '#e88134', name: 'Ask Me', power: 3};
-            break;
-          case 'busy':
-            user.status = {color: '#5b0b0b', name: 'Busy', power: 2};
-            break;
-          case 'offline':
-            user.status = {color: '#CCCCCC', name: 'Offline', power: 0, light: true};
-            break;
-          default:
-            user.status = {color: '#CCCCCC', name: user.status, power: -1, light: true};
-        }
-    },
-    setBioLinks(user) {
-      user.bioLinks = user.bioLinks ? user.bioLinks.filter(e => e) : [];
-    },
-    setLastLogin(user) {
-      user.last_login = moment(user.last_login).format('YYYY-MM-DD HH:mm:ss');
-    },
-    setWorldIcon(user) {
-      if (user.location && user.location !== 'offline') {
-        switch (user.location) {
-          case 'private':
-            user.world_icon = 'public_off';
-            break;
-          default:
-            user.world_icon = 'public';
-        }
-      } else user.world_icon = '';
-    },
-    setWorldLink(user) {
-      if (user.location.startsWith('wrld')) {
-        user.world_link = `vrchat://launch?ref=vrchat.com&id=${user.location}`;
-      }
-    },
-    setLastPlatform(user) {
-      switch (user.last_platform) {
-        case 'standalonewindows':
-          user.last_platform = 'PC/VR';
-          break;
-        case 'android':
-          user.last_platform = 'Quest';
-          break;
-      }
-    },
-    getLocationType(location) {
-      const splicedLocation = location.split(':');
-
-      if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1].includes('~private'))
-          return 'invite/invite+';
-        if (splicedLocation[1].includes('~hidden'))
-          return 'friends+';
-        else if (splicedLocation[1].includes('~friends'))
-          return 'friends';
-        else
-          return 'public';
-      } else return location;
-    },
-    getLocationRegion(location) {
-      const splicedLocation = location.split(':');
-
-      if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1].includes('~region(eu)'))
-          return 'eu';
-        else if (splicedLocation[1].includes('~region(jp)'))
-          return 'jp';
-        else
-          return 'us';
-      } else return null;
     },
     formatNumber(number) {
       return Intl.NumberFormat('fr-FR').format(parseInt(number))
