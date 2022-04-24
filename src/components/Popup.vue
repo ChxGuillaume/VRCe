@@ -606,7 +606,6 @@ import WorldsTab from "./PopupTabs/WorldsTab";
 import GalleryTab from "./PopupTabs/GalleryTab";
 import FriendPicture from "./PopupComponents/FriendPicture";
 import {mapActions, mapMutations, mapState} from "vuex";
-import formatFriendData from "../store/utils/formatFriendData";
 
 export default {
   name: 'Popup',
@@ -617,8 +616,7 @@ export default {
       fetching: true,
       cloudflare_error: false,
       friend_search: '',
-      user_details: {},
-      worlds: [],
+      // user_details: {},
       drawer: false,
       no_session_dialog: false,
       bottom_navigator: 'friends',
@@ -649,8 +647,12 @@ export default {
       logged_in: state => state.logged_in,
     }),
     ...mapState('friends', {
-      friends: state => state.friends,
+      friends: state => state.friendsArray,
       favorite_friends: state => state.favorite_friends,
+      user_details: state => state.user_details,
+    }),
+    ...mapState('worlds', {
+      worlds: state => state.worldsArray,
     }),
     sortedFriends() {
       const filteredFriends = this.friends.filter(e => {
@@ -696,11 +698,7 @@ export default {
   mounted() {
     this.fetchUserData()
         .then(() => this.fetchFriendsData())
-        .catch((e) => console.log('Error Fetching user data', e))
-        .finally(() => {
-          console.log(this.user_data)
-          this.fetching = false;
-        });
+        .finally(() => this.fetching = false);
 
     this.port = (browser.runtime || chrome.extension).connect({
       name: 'popup-app'
@@ -721,6 +719,7 @@ export default {
     }),
     ...mapActions('friends', {
       fetchFriendsData: 'fetchData',
+      fetchUserDetails: 'fetchUserDetails',
     }),
     ...mapMutations('friends', {
       setFavoriteFriends: 'setFavoriteFriends',
@@ -730,17 +729,19 @@ export default {
         return;
 
       this.drawer = true;
-      this.user_details = {};
+      // this.user_details = {};
 
-      fetch(`https://vrchat.com/api/1/users/${friend_id}`)
-          .then(response => response.json())
-          .then(data => {
-            formatFriendData(data);
-            this.user_details = data;
+      this.fetchUserDetails(friend_id)
 
-            if (data.worldId && !['offline'].includes(data.worldId))
-              this.fetchWorld(data.worldId, true);
-          })
+      // fetch(`https://vrchat.com/api/1/users/${friend_id}`)
+      //     .then(response => response.json())
+      //     .then(data => {
+      //       formatFriendData(data);
+      //       this.user_details = data;
+      //
+      //       if (data.worldId && !['offline'].includes(data.worldId))
+      //         this.fetchWorld(data.worldId, true);
+      //     })
     },
     fetchWorld(worldId, showDrawer = false) {
       if (worldId !== 'private') {
