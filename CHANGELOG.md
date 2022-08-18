@@ -1,3 +1,17 @@
+# 1.5.5
+
+Fix:
+- Rollback some changes in background script (were not logging events)
+
+# 1.5.4
+
+Added:
+- Supporter/Early Adopter badges on user details
+
+Fix:
+- Sometimes were not able to see any friends in friends/worlds tabs
+- Global Fixes
+
 # 1.5.3
 
 Added:

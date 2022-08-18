@@ -58,7 +58,11 @@
                     v-model="friends_shown_headers"
                     :items="friendsHeadersSelectItems"
                     label="Hide Columns"
+                    hide-details
                     multiple
+                    outlined
+                    rounded
+                    dense
                 >
                   <template v-slot:prepend-item>
                     <v-list-item
@@ -89,12 +93,17 @@
                 </v-select>
                 <v-spacer/>
                 <div v-if="isLoading">
-                  <span>{{ friends.length }} / {{ user_data.friends.length}}</span>
+                  <span>{{ friends.length }} / {{ user_data.friends.length }}</span>
                 </div>
                 <v-spacer/>
                 <v-text-field
                     v-model="friends_search"
                     label="Search"
+                    hide-details
+                    clearable
+                    outlined
+                    rounded
+                    dense
                 />
               </v-card-title>
               <v-data-table
@@ -106,9 +115,15 @@
                   :footer-props="{
                 'items-per-page-options': [10, 25, 50, 100, -1]
               }"
-                  sort-by="state.power"
+                  sort-by="status.power"
+                  sort-desc
                   height="73vh"
               >
+                <template v-slot:item.friend_number="{ item: { friend_number } }">
+                  <v-chip color="white" light>
+                    {{ friend_number }}
+                  </v-chip>
+                </template>
                 <template v-slot:item.worldId="{ item: { worldId } }">
                   <v-img
                       v-if="worlds[worldId]"
@@ -231,7 +246,7 @@
                   />
                 </template>
                 <template v-slot:item.state.power="{ item: { state } }">
-                  <v-chip :color="state.color" :light="state.light">
+                  <v-chip v-if="state.power < 3" :color="state.color" :light="state.light">
                     {{ state.name }}
                   </v-chip>
                 </template>
@@ -246,7 +261,7 @@
                   </v-chip>
                 </template>
                 <template v-slot:item.languages="{ item: { languages } }">
-                  {{ languages.join(', ') }}
+                  {{ (languages || []).join(', ') }}
                 </template>
                 <template v-slot:item.tags="{ item }">
                   <v-chip
@@ -365,15 +380,15 @@ import 'material-design-icons-iconfont/dist/material-design-icons.css'
 import * as moment from 'moment';
 import PlayerModerationTab from "./StandaloneTabs/PlayerModerationTab";
 import PersonalInfosTab from "./StandaloneTabs/PersonalInfosTab";
+import {mapActions, mapState} from "vuex";
 
 export default {
   name: 'Standalone',
   components: {PersonalInfosTab, PlayerModerationTab},
   data: () => ({
-    user_data: {},
-    friends: [],
     friends_search: '',
     friends_headers: [
+      {text: 'No', align: 'start', value: 'friend_number'},
       {text: 'World', align: 'start', value: 'worldId', sortable: false},
       {text: 'Avatar Icon', value: 'userIcon', sortable: false},
       {text: 'Avatar', value: 'avatar', sortable: false},
@@ -402,6 +417,15 @@ export default {
     scroll_top: 0
   }),
   computed: {
+    ...mapState('user', {
+      user_data: state => state.data,
+      logged_in: state => state.logged_in,
+    }),
+    ...mapState('friends', {
+      friends: state => state.friendsArray,
+      favorite_friends: state => state.favorite_friends,
+      user_details: state => state.user_details,
+    }),
     ranksStats() {
       const data = {}
 
@@ -441,13 +465,25 @@ export default {
 
     this.friends_shown_headers = this.friendsHeadersSelectItems.filter(e => !e.includes('Tag') && !e.includes('Link'));
 
-    this.fetchUser();
+    // this.fetchUser();
+
+    this.fetchUserData()
+        .then(() => this.fetchFriendsData())
+        .finally(() => this.fetching = false);
 
     document.addEventListener('scroll', () => {
       this.scroll_top = document.documentElement.scrollTop || document.body.scrollTop
     })
   },
   methods: {
+    ...mapActions('user', {
+      fetchUserData: 'fetchData',
+      logout: 'logout',
+    }),
+    ...mapActions('friends', {
+      fetchFriendsData: 'fetchData',
+      fetchUserDetails: 'fetchUserDetails',
+    }),
     fetchUser() {
       this.need_login_form = false;
       this.need_visit_vrc_home_form = false;

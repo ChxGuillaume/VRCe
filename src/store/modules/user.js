@@ -1,3 +1,5 @@
+import formatFriendData from "@/store/utils/formatFriendData";
+
 const state = () => ({
     data: {
         id: "",
@@ -67,6 +69,8 @@ const actions = {
                     })
                     .then(data => {
                         if (!data.error) {
+                            formatFriendData(data);
+
                             commit('setData', data);
                             commit('setLoggedIn', true);
                             resolve();

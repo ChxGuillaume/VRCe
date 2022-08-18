@@ -108,10 +108,7 @@
 
     <h1 v-if="!hasUserData && !fetching" class="mt-2 text-center">Logged Off</h1>
 
-    <v-row
-        v-if="hasUserData"
-        style="margin-bottom: 56px;"
-    >
+    <v-row v-if="hasUserData" style="margin-bottom: 56px;">
       <v-col
           cols="12" class="d-flex flex-column align-center pb-0"
       >
@@ -125,7 +122,7 @@
               contain
               width="128"
               height="96"
-              @click="fetchUserDetails($event, user_data.id)"
+              @click="popupUser($event, user_data.id)"
           >
             <template v-slot:placeholder>
               <v-row
@@ -143,7 +140,7 @@
         </div>
         <h1
             class="mt-1 d-inline-block text-h5 font-weight-bold clickable"
-            @click="fetchUserDetails($event, user_data.id)"
+            @click="popupUser($event, user_data.id)"
         >
           {{ user_data.displayName }}
         </h1>
@@ -220,7 +217,7 @@
                           :key="friend.id"
                           class="px-0"
                           :style="{ background: friend.status.color + '33' }"
-                          @click="fetchUserDetails($event, friend.id)"
+                          @click="popupUser($event, friend.id)"
                           @click.right.prevent="openFriendMenu($event, friend)"
                       >
                         <friend-picture :friend="friend"/>
@@ -258,7 +255,7 @@
             <worlds-tab
                 :friends="friends"
                 :worlds="worlds"
-                @user-details="fetchUserDetails(null, $event)"
+                @user-details="popupUser(null, $event)"
                 @user-menu="openFriendMenu($event.$event, $event.friend)"
             />
           </v-tab-item>
@@ -302,7 +299,7 @@
         <v-card-text>
           <v-row class="pt-2">
             <v-col cols="12" class="pb-0 d-flex justify-center align-center flex-column">
-              <h2 class="mr-2 text-h5 font-weight-bold d-inline-block">{{ user_details.displayName }}</h2>
+              <h2 class="mr-2 text-h5 font-weight-bold d-inline-block">{{ user_details.displayName }} #{{ user_details.friend_number }}</h2>
               <span class="caption">{{ user_details.username }}</span>
             </v-col>
             <v-col cols="12" class="pt-1 d-flex justify-center align-center">
@@ -311,7 +308,7 @@
                   :color="user_details.status.color"
                   :light="user_details.status.light"
                   small
-                  class="mx-2"
+                  class="mx-1"
               >
                 {{ user_details.status.name }}
               </v-chip>
@@ -320,6 +317,7 @@
                   :color="user_details.rank.color"
                   :light="user_details.rank.light"
                   small
+                  class="mx-1"
               >
                 {{ user_details.rank.name }}
               </v-chip>
@@ -377,6 +375,28 @@
                 </v-img>
               </div>
             </v-col>
+            <v-col
+                v-if="user_details.tags && (user_details.tags.includes('system_early_adopter') || user_details.tags.includes('system_supporter'))"
+                cols="12"
+                class="pt-1 d-flex justify-center align-center"
+            >
+              <v-chip
+                  v-if="user_details.tags && user_details.tags.includes('system_early_adopter')"
+                  color="transparent"
+                  large
+                  class="mx-1"
+              >
+                <v-img :src="require('../assets/early_adopter.png')" width="42" title="Early Adopter"/>
+              </v-chip>
+              <v-chip
+                  v-if="user_details.tags && user_details.tags.includes('system_supporter')"
+                  color="transparent"
+                  large
+                  class="mx-1"
+              >
+                <v-img :src="require('../assets/supporter.png')" width="42" title="Supporter"/>
+              </v-chip>
+            </v-col>
             <v-col cols="12" v-if="user_details.statusDescription">
               <h4>Status:</h4>
               <span class="caption">{{ user_details.statusDescription }}</span>
@@ -412,7 +432,7 @@
               <h4>Last Login:</h4>
               <span class="caption">{{ user_details.last_login }}</span>
             </v-col>
-            <v-col cols="12" v-if="user_details.world">
+            <v-col cols="12" v-if="worldDetails">
               <h4>
                 <span>World:</span>
                 <span v-if="user_details.location_type" class="mx-2 caption grey--text font-italic">
@@ -423,20 +443,20 @@
                 </span>
               </h4>
               <v-skeleton-loader type="image" width="256" height="192">
-                <v-img :src="user_details.world.thumbnailImageUrl" class="rounded mx-auto my-2" width="256"
+                <v-img :src="worldDetails.thumbnailImageUrl" class="rounded mx-auto my-2" width="256"
                        height="192"/>
               </v-skeleton-loader>
-              <h5 class="mt-3 text-h6 text-center">{{ user_details.world.name }}</h5>
-              <h6 v-if="user_details.world.author_tags" class="mb-3 subtitle-2 text-center grey--text">
-                {{ user_details.world.author_tags.join(', ') }}
+              <h5 class="mt-3 text-h6 text-center">{{ worldDetails.name }}</h5>
+              <h6 v-if="worldDetails.author_tags" class="mb-3 subtitle-2 text-center grey--text">
+                {{ worldDetails.author_tags.join(', ') }}
               </h6>
               <div class="my-2">
-                <v-icon v-for="i in user_details.world.heat" :key="i" small color="orange">
+                <v-icon v-for="i in worldDetails.heat" :key="i" small color="orange">
                   local_fire_department
                 </v-icon>
               </div>
-              <p class="mt-2 mb-0 text-pre-wrap">{{ user_details.world.description }}</p>
-              <v-simple-table v-if="user_details.world.id" class="my-2">
+              <p class="mt-2 mb-0 text-pre-wrap">{{ worldDetails.description }}</p>
+              <v-simple-table v-if="worldDetails.id" class="my-2">
                 <template v-slot:default>
                   <thead>
                   <tr>
@@ -453,14 +473,14 @@
                   </thead>
                   <tbody>
                   <tr>
-                    <td>{{ formatNumber(user_details.world.occupants) }}</td>
-                    <td>{{ formatNumber(user_details.world.publicOccupants) }}</td>
-                    <td>{{ formatNumber(user_details.world.privateOccupants) }}</td>
+                    <td>{{ formatNumber(worldDetails.occupants) }}</td>
+                    <td>{{ formatNumber(worldDetails.publicOccupants) }}</td>
+                    <td>{{ formatNumber(worldDetails.privateOccupants) }}</td>
                   </tr>
                   </tbody>
                 </template>
               </v-simple-table>
-              <v-simple-table v-if="user_details.world.id" class="my-2">
+              <v-simple-table v-if="worldDetails.id" class="my-2">
                 <template v-slot:default>
                   <thead>
                   <tr>
@@ -477,18 +497,18 @@
                   </thead>
                   <tbody>
                   <tr>
-                    <td>{{ formatNumber(user_details.world.favorites) }}</td>
-                    <td>{{ formatNumber(user_details.world.visits) }}</td>
-                    <td>{{ formatNumber(user_details.world.version) }}</td>
+                    <td>{{ formatNumber(worldDetails.favorites) }}</td>
+                    <td>{{ formatNumber(worldDetails.visits) }}</td>
+                    <td>{{ formatNumber(worldDetails.version) }}</td>
                   </tr>
                   </tbody>
                 </template>
               </v-simple-table>
-              <div v-if="user_details.world.created_at">
-                Created: <strong>{{ user_details.world.created_at }}</strong>
+              <div v-if="worldDetails.created_at">
+                Created: <strong>{{ worldDetails.created_at }}</strong>
               </div>
-              <div v-if="user_details.world.updated_at">
-                Last Update: <strong>{{ user_details.world.updated_at }}</strong>
+              <div v-if="worldDetails.updated_at">
+                Last Update: <strong>{{ worldDetails.updated_at }}</strong>
               </div>
             </v-col>
           </v-row>
@@ -599,7 +619,6 @@
 </template>
 
 <script>
-import * as moment from "moment";
 import EventsTab from "./PopupTabs/EventsTab";
 import SettingsTab from "./PopupTabs/SettingsTab";
 import WorldsTab from "./PopupTabs/WorldsTab";
@@ -616,7 +635,6 @@ export default {
       fetching: true,
       cloudflare_error: false,
       friend_search: '',
-      // user_details: {},
       drawer: false,
       no_session_dialog: false,
       bottom_navigator: 'friends',
@@ -653,7 +671,11 @@ export default {
     }),
     ...mapState('worlds', {
       worlds: state => state.worldsArray,
+      worldsObject: state => state.worldsObject,
     }),
+    worldDetails() {
+      return this.worldsObject[this.user_details.worldId] || {}
+    },
     sortedFriends() {
       const filteredFriends = this.friends.filter(e => {
         const displayName = e.displayName.toLowerCase();
@@ -724,54 +746,13 @@ export default {
     ...mapMutations('friends', {
       setFavoriteFriends: 'setFavoriteFriends',
     }),
-    fetchUserDetails(ev, friend_id) {
+    popupUser(ev, friend_id) {
       if (ev && ['I', 'SPAN'].includes(ev.target.nodeName))
         return;
 
       this.drawer = true;
-      // this.user_details = {};
 
       this.fetchUserDetails(friend_id)
-
-      // fetch(`https://vrchat.com/api/1/users/${friend_id}`)
-      //     .then(response => response.json())
-      //     .then(data => {
-      //       formatFriendData(data);
-      //       this.user_details = data;
-      //
-      //       if (data.worldId && !['offline'].includes(data.worldId))
-      //         this.fetchWorld(data.worldId, true);
-      //     })
-    },
-    fetchWorld(worldId, showDrawer = false) {
-      if (worldId !== 'private') {
-        fetch(`https://vrchat.com/api/1/worlds/${worldId}`)
-            .then(response => response.json())
-            .then(data => {
-              data.created_at = moment(data.created_at).format('YYYY-MM-DD HH:mm:ss');
-              data.updated_at = moment(data.updated_at).format('YYYY-MM-DD HH:mm:ss');
-
-              data.publicationDate = data.publicationDate !== 'none'
-                  ? moment(data.publicationDate).format('YYYY-MM-DD HH:mm:ss')
-                  : data.publicationDate;
-
-              data.labsPublicationDate = data.labsPublicationDate !== 'none'
-                  ? moment(data.labsPublicationDate).format('YYYY-MM-DD HH:mm:ss')
-                  : data.labsPublicationDate;
-
-              data.author_tags = data.tags.filter(e => e.includes('author_tag')).map(e => e.replace('author_tag_', '')) || [];
-
-              this.worlds.push(data);
-
-              this.user_details.world = data;
-              if (showDrawer) this.refreshDrawer();
-            })
-      } else {
-        this.user_details.world = {
-          name: 'Private World',
-          thumbnailImageUrl: 'https://assets.vrchat.com/www/images/default_private_image.png'
-        };
-      }
     },
     sendInviteToInstance(location) {
       fetch(`https://vrchat.com/api/1/instances/${location}/invite`, {

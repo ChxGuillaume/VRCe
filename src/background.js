@@ -82,10 +82,18 @@ function createSocket(url) {
 
         fetch('https://vrchat.com/api/1/auth/user')
             .then(response => {
-                if (response.status === 503) console.log('%Cloudflare error?!', 'color: #eeba90; font-size: 50px;'); else return response.json();
+                if (response.status === 503)
+                    console.log('%Cloudflare error?!', 'color: #eeba90; font-size: 50px;');
+                else return response.json();
             })
             .then(data => {
-                if (data.error && data.error.status_code === 401) setExtensionStatus(false);
+                if (data.error && data.error.status_code === 401)
+                    setExtensionStatus(false);
+                else
+                    console.log('Debug! Data', data);
+            })
+            .catch(err => {
+                console.log('Debug! Err', err);
             });
 
         if (ev.reason !== 'known_close') setTimeout(() => {
@@ -105,11 +113,11 @@ function createSocket(url) {
 
 function setExtensionStatus(online = true) {
     if (online) {
-        chrome.browserAction.setIcon({
+        chrome.action.setIcon({
             path: {'19': 'icons/vrce-logo-19_x_19.png', '38': 'icons/vrce-logo-38_x_38.png'}
         });
 
-        chrome.browserAction.setTitle({title: 'VRCe - Online'});
+        chrome.action.setTitle({title: 'VRCe - Online'});
     } else {
         chrome.notifications.create('openLoginPage', {
             title: 'Disconnected',
@@ -118,11 +126,11 @@ function setExtensionStatus(online = true) {
             iconUrl: 'icons/vrce-logo-128_x_128.png'
         });
 
-        chrome.browserAction.setIcon({
+        chrome.action.setIcon({
             path: {'19': 'icons/vrce-logo-19_x_19-offline.png', '38': 'icons/vrce-logo-38_x_38-offline.png'}
         });
 
-        chrome.browserAction.setTitle({title: 'VRCe - Offline'});
+        chrome.action.setTitle({title: 'VRCe - Offline'});
     }
 }
 

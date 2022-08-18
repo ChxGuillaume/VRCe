@@ -1,4 +1,13 @@
 module.exports = {
+  configureWebpack: {
+    devtool: 'cheap-module-source-map',
+    output: {
+      globalObject: 'this',
+      filename: "[name].js",
+      chunkFilename: "[name].js",
+    }
+  },
+
   pages: {
     popup: {
       template: 'public/browser-extension.html',
@@ -18,8 +27,11 @@ module.exports = {
       componentOptions: {
         background: {
           entry: 'src/background.js'
-        }
-      }
+        },
+      },
+      extensionReloaderOptions: {
+        reloadPage: false,
+      },
     }
   },
 

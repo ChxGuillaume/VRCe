@@ -1,10 +1,11 @@
 import * as moment from "moment";
 
-const formatFriendData = (user, favorite_friends = [], active_friends = []) => {
+const formatFriendData = (user, favorite_friends = [], active_friends = [], friendsIds = []) => {
     if (active_friends.includes(user.id))
         user.location = '';
 
     setRank(user);
+    setState(user);
     setStatus(user);
     setBioLinks(user);
     setLastLogin(user);
@@ -13,8 +14,9 @@ const formatFriendData = (user, favorite_friends = [], active_friends = []) => {
     setLastPlatform(user);
 
     user.favorited = favorite_friends.includes(user.id);
-    user.location_type = getLocationType(user.location);
-    user.location_region = getLocationRegion(user.location);
+    user.location_type = getLocationType(user.location || '');
+    user.location_region = getLocationRegion(user.location || '');
+    user.friend_number = friendsIds.indexOf(user.id) + 1;
 }
 
 const setRank = (user) => {
@@ -36,6 +38,23 @@ const setRank = (user) => {
         user.rank = {color: '#CCCCCC', name: 'Visitor', power: 6, light: true}
     }
 };
+
+const setState = (user) => {
+    switch (user.state) {
+        case 'online':
+            user.state = {color: '#60ad5e', name: 'Online', power: 0};
+            break;
+        case 'active':
+            user.state = {color: '#ebd23b', name: 'Active', power: 1};
+            break;
+        case 'offline':
+            user.state = {color: '#dddddd', name: 'Offline', power: 2, light: true};
+            break;
+        default:
+            user.state = {color: '#CCCCCC', name: user.state, power: 3, light: true};
+    }
+};
+
 const setStatus = (user) => {
     if (!user.location)
         user.status = {color: '#ebd23b', name: 'Active', power: 1, light: true};
@@ -65,9 +84,11 @@ const setStatus = (user) => {
 const setBioLinks = (user) => {
     user.bioLinks = user.bioLinks ? user.bioLinks.filter(e => e) : [];
 };
+
 const setLastLogin = (user) => {
     user.last_login = moment(user.last_login).format('YYYY-MM-DD HH:mm:ss');
 };
+
 const setWorldIcon = (user) => {
     if (user.location && user.location !== 'offline') {
         switch (user.location) {
@@ -79,11 +100,13 @@ const setWorldIcon = (user) => {
         }
     } else user.world_icon = '';
 };
+
 const setWorldLink = (user) => {
-    if (user.location.startsWith('wrld')) {
+    if ((user.location || '').startsWith('wrld')) {
         user.world_link = `vrchat://launch?ref=vrchat.com&id=${user.location}`;
     }
 };
+
 const setLastPlatform = (user) => {
     switch (user.last_platform) {
         case 'standalonewindows':
@@ -94,27 +117,32 @@ const setLastPlatform = (user) => {
             break;
     }
 };
+
 const getLocationType = (location) => {
     const splicedLocation = location.split(':');
+    console.log(splicedLocation, location)
 
     if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1].includes('~private'))
+        if (splicedLocation[1] && splicedLocation[1].includes('~private'))
             return 'invite/invite+';
-        if (splicedLocation[1].includes('~hidden'))
+        if (splicedLocation[1] && splicedLocation[1].includes('~hidden'))
             return 'friends+';
-        else if (splicedLocation[1].includes('~friends'))
+        else if (splicedLocation[1] && splicedLocation[1].includes('~friends'))
             return 'friends';
+        else if (location === 'traveling')
+            return 'traveling';
         else
             return 'public';
     } else return location;
 };
+
 const getLocationRegion = (location) => {
     const splicedLocation = location.split(':');
 
     if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1].includes('~region(eu)'))
+        if (splicedLocation[1] && splicedLocation[1].includes('~region(eu)'))
             return 'eu';
-        else if (splicedLocation[1].includes('~region(jp)'))
+        else if (splicedLocation[1] && splicedLocation[1].includes('~region(jp)'))
             return 'jp';
         else
             return 'us';

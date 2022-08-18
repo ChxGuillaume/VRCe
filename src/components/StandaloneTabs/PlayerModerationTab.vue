@@ -27,7 +27,7 @@
             outlined
             rounded
             dense
-            placeholder="Search User..."
+            label="User Name"
             style="max-width:250px;"
         />
       </v-col>

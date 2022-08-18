@@ -10,14 +10,14 @@ const state = () => ({
 const getters = {}
 
 const actions = {
-    fetchData({commit, dispatch, state, rootState}, data) {
+    fetchData({commit, dispatch, state, rootState: { user: { data: user } }}, data) {
         const {offline = false, offset = 0} = data || {};
         const count = 100;
 
         fetch(`https://vrchat.com/api/1/auth/user/friends?offline=${offline}&n=${count}&offset=${offset}`)
             .then(res => res.json())
             .then(data => {
-                data.forEach(friend => formatFriendData(friend, state.favorite_friends, rootState.user.activeFriends));
+                data.forEach(friend => formatFriendData(friend, state.favorite_friends, user.activeFriends, user.friends));
 
                 data.forEach(friend => {
                     const splicedLocation = friend.location.split(':');
@@ -34,12 +34,16 @@ const actions = {
                     dispatch('fetchData', {offline: true, offset: 0});
             })
     },
-    fetchUserDetails({commit, dispatch}, friend_id) {
+    fetchUserDetails({commit, dispatch, state, rootState: { user: { data: user } }}, friend_id) {
+        commit('setUserDetails', {});
+
         fetch(`https://vrchat.com/api/1/users/${friend_id}`)
             .then(response => response.json())
             .then(data => {
-                formatFriendData(data);
+                formatFriendData(data, state.favorite_friends, user.activeFriends, user.friends);
                 commit('setUserDetails', data);
+
+                console.log(data)
 
                 if (data.worldId && !['offline'].includes(data.worldId))
                     dispatch('worlds/fetchWorld', data.worldId, {root: true});
