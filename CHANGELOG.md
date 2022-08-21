@@ -1,3 +1,8 @@
+# 1.5.6
+
+Fix:
+- Mistake in manifest.json (since when? good question...)
+
 # 1.5.5
 
 Fix:
