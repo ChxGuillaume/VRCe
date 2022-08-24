@@ -120,7 +120,6 @@ const setLastPlatform = (user) => {
 
 const getLocationType = (location) => {
     const splicedLocation = location.split(':');
-    console.log(splicedLocation, location)
 
     if (location && !['private', 'offline'].includes(location)) {
         if (splicedLocation[1] && splicedLocation[1].includes('~private'))

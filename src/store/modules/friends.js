@@ -43,8 +43,6 @@ const actions = {
                 formatFriendData(data, state.favorite_friends, user.activeFriends, user.friends);
                 commit('setUserDetails', data);
 
-                console.log(data)
-
                 if (data.worldId && !['offline'].includes(data.worldId))
                     dispatch('worlds/fetchWorld', data.worldId, {root: true});
             })

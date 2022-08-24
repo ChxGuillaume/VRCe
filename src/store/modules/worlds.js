@@ -3,9 +3,13 @@ import * as moment from "moment";
 const state = () => ({
     worldsArray: [],
     worldsObject: {},
-    private_world: {
+    privateWorld: {
         name: 'Private World',
         thumbnailImageUrl: 'https://assets.vrchat.com/www/images/default_private_image.png'
+    },
+    travelingWorld: {
+        name: 'Traveling Worlds',
+        thumbnailImageUrl: 'https://assets.vrchat.com/www/images/default_between_image.png'
     }
 })
 

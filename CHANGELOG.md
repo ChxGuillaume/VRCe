@@ -1,3 +1,9 @@
+# 1.5.7
+
+Added:
+- New traveling world status when needed
+- Manual note added by user in user details
+
 # 1.5.6
 
 Fix:

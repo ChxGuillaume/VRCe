@@ -407,6 +407,12 @@
                 {{ user_details.bio || '(No Bio)' }}
               </span>
             </v-col>
+            <v-col cols="12">
+              <h4>Note:</h4>
+              <span class="caption text-pre-wrap">
+                {{ user_details.note || '(No Note)' }}
+              </span>
+            </v-col>
             <v-col cols="12" v-if="user_details.bioLinks && user_details.bioLinks.length">
               <h4>Bio Links:</h4>
               <a
@@ -672,9 +678,17 @@ export default {
     ...mapState('worlds', {
       worlds: state => state.worldsArray,
       worldsObject: state => state.worldsObject,
+      privateWorld: state => state.privateWorld,
+      travelingWorld: state => state.travelingWorld,
     }),
     worldDetails() {
-      return this.worldsObject[this.user_details.worldId] || {}
+      if (this.user_details.worldId === 'private') {
+        return this.privateWorld
+      } else if (this.user_details.worldId === 'traveling') {
+        return this.travelingWorld
+      } else {
+        return this.worldsObject[this.user_details.worldId] || {}
+      }
     },
     sortedFriends() {
       const filteredFriends = this.friends.filter(e => {

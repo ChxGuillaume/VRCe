@@ -129,7 +129,8 @@
                     <span v-if="event.content.world.name" class="d-block mt-1 caption">
                       {{ event.content.world.name }}
                     </span>
-                    <span v-else class="d-block mt-1">Private</span>
+                    <span v-else-if="event.content.location === 'private'" class="d-block mt-1">Private</span>
+                    <span v-else-if="event.content.location === 'traveling'" class="d-block mt-1">Traveling</span>
                   </h3>
                   <h3
                       v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)"
@@ -305,6 +306,8 @@ export default {
             : event.content.user.currentAvatarThumbnailImageUrl;
       else if (event.type === 'friend-location' && event.content.location === 'private')
         return 'https://assets.vrchat.com/www/images/default_private_image.png';
+      else if (event.type === 'friend-location' && event.content.location === 'traveling')
+        return 'https://assets.vrchat.com/www/images/default_between_image.png';
       else if (event.type === 'friend-location')
         return event.content.world.thumbnailImageUrl;
     },
