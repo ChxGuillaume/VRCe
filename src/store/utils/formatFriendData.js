@@ -119,14 +119,17 @@ const setLastPlatform = (user) => {
 };
 
 const getLocationType = (location) => {
-    const splicedLocation = location.split(':');
+    const [, instance] = location.split(':');
+
+    if (!instance)
+        return '';
 
     if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1] && splicedLocation[1].includes('~private'))
+        if (instance.includes('~private'))
             return 'invite/invite+';
-        if (splicedLocation[1] && splicedLocation[1].includes('~hidden'))
+        if (instance.includes('~hidden'))
             return 'friends+';
-        else if (splicedLocation[1] && splicedLocation[1].includes('~friends'))
+        else if (instance.includes('~friends'))
             return 'friends';
         else if (location === 'traveling')
             return 'traveling';
@@ -136,12 +139,15 @@ const getLocationType = (location) => {
 };
 
 const getLocationRegion = (location) => {
-    const splicedLocation = location.split(':');
+    const [, instance] = location.split(':');
+
+    if (!instance)
+        return '';
 
     if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1] && splicedLocation[1].includes('~region(eu)'))
+        if (instance.includes('~region(eu)'))
             return 'eu';
-        else if (splicedLocation[1] && splicedLocation[1].includes('~region(jp)'))
+        else if (instance.includes('~region(jp)'))
             return 'jp';
         else
             return 'us';

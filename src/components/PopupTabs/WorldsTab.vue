@@ -34,21 +34,20 @@
           </v-img>
 
           <v-row class="mx-0 align-center">
-            <v-col cols="12" class="pr-7 text-center" style="position: relative">
-              <h3 class="subtitle-1" style="width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+            <v-col cols="12" class="pr-8 text-center" style="position: relative">
+              <h3 class="subtitle-1" style="width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" :title="instance.world.name">
                 {{ instance.world.name }}
               </h3>
               <h4 class="caption">
-                <span v-if="instance.location !== 'private'">Friends in instance:</span>
-                <span v-else>Friends in private:</span>
-                {{ instance.friends.length }}
-                <span v-if="instance.instance_data"> / {{ instance.instance_data.n_users }}</span>
-                <span v-if="instance.instance_type" class="grey--text font-italic">
-                  ({{ instance.instance_type }})
-                </span>
-                <span v-if="instance.instance_region" class="grey--text font-italic">
-                  ({{ instance.instance_region }})
-                </span>
+                <span v-if="instance.location !== 'private'" class="grey--text">Friends:</span>
+                <span class="ml-1 grey--text">{{ instance.friends.length }}</span>
+                <span v-if="instance.location === 'private'" class="ml-1 grey--text">Friends</span>
+
+                <span v-if="instance.instance_data" class="ml-1 grey--text">/ {{ instance.instance_data.n_users }}</span>
+
+                <span v-if="instance.instance_type" class="ml-1 grey--text text--darken-2 font-italic">({{ instance.instance_type }})</span>
+
+                <span v-if="instance.instance_region" class="ml-1 grey--text text--darken-2 font-italic">({{ instance.instance_region }})</span>
               </h4>
 
               <v-tooltip v-if="instance.location !== 'private'" color="grey darken-2" left>
@@ -240,21 +239,29 @@ export default {
       this.refreshFriends();
     },
     getLocationRegion(location) {
-      const splicedLocation = location.split(':');
+      const [, instance] = location.split(':');
 
-      if (splicedLocation[1].includes('~region(eu)'))
+      if (!instance)
+        return '';
+
+      if (instance.includes('~region(eu)'))
         return 'eu';
-      else if (splicedLocation[1].includes('~region(jp)'))
+      else if (instance.includes('~region(jp)'))
+        return 'jp';
+      else if (instance.includes('~region(use)'))
         return 'jp';
       else
-        return 'us';
+        return 'usw';
     },
     getLocationType(location) {
-      const splicedLocation = location.split(':');
+      const [, instance] = location.split(':');
 
-      if (splicedLocation[1].includes('~hidden'))
+      if (!instance)
+        return '';
+
+      if (instance.includes('~hidden'))
         return 'friends+';
-      else if (splicedLocation[1].includes('~friends'))
+      else if (instance.includes('~friends'))
         return 'friends';
       else
         return 'public';

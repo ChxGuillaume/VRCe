@@ -8,10 +8,13 @@
   >
     <v-list-item>
       <v-list-item-content>
+        <span class="caption">Default Tab</span>
         <v-select
             v-model="default_tab"
             :items="tabs"
             label="Default Tab"
+            hide-details solo
+            background-color="grey darken-3"
             @change="saveDefaultTab"
         />
       </v-list-item-content>

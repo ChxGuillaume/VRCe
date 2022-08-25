@@ -1,3 +1,11 @@
+# 1.5.8
+
+Update:
+- Some generic visual improvements
+
+Fix:
+- Errors with fetching location in worlds tab
+
 # 1.5.7
 
 Added:

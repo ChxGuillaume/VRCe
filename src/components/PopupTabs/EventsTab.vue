@@ -224,7 +224,6 @@ export default {
       ],
       event_types_shown: [
         'friend-online',
-        'friend-active',
         'friend-offline',
         'friend-location',
         'friend-update',

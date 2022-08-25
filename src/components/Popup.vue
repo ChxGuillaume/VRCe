@@ -180,9 +180,9 @@
                     <v-row class="mx-0 align-center">
                       <v-col cols="12" class="text-center d-flex align-center justify-center"
                              style="position:relative;">
-                        <v-chip x-small class="mr-3" :color="friendStatusGroup.color"/>
+                        <v-chip x-small light :color="friendStatusGroup.color" v-text="friendStatusGroup.friends.length"/>
 
-                        <h3 class="d-inline-block subtitle-1"
+                        <h3 class="ml-3 mr-2 d-inline-block subtitle-1"
                             style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
                           {{ friendStatusGroup.name }}
                         </h3>
@@ -196,15 +196,10 @@
                                 @click="closedGroupsToggle(friendStatusGroup.power)"
                                 v-bind="attrs" v-on="on"
                             >
-                              <v-icon small>{{
-                                  !closed_groups.includes(friendStatusGroup.power) ? 'remove' : 'add'
-                                }}
-                              </v-icon>
+                              <v-icon small>{{ !closed_groups.includes(friendStatusGroup.power) ? 'remove' : 'add' }}</v-icon>
                             </v-btn>
                           </template>
-                          <span>{{
-                              !closed_groups.includes(friendStatusGroup.power) ? 'Reduce' : 'Expand'
-                            }} Group</span>
+                          <span>{{ !closed_groups.includes(friendStatusGroup.power) ? 'Reduce' : 'Expand' }} Group</span>
                         </v-tooltip>
                       </v-col>
                     </v-row>
@@ -609,7 +604,7 @@
         <v-icon>history</v-icon>
       </v-btn>
 
-      <v-btn height="100%" value="gallery" color="transparent" :disabled="!isUserVRCPlus">
+      <v-btn v-if="isUserVRCPlus" height="100%" value="gallery" color="transparent">
         <span>Gallery</span>
 
         <v-icon>collections</v-icon>
