@@ -1,3 +1,8 @@
+# 1.5.9
+
+Added:
+- Version number in settings tab
+
 # 1.5.8
 
 Update:

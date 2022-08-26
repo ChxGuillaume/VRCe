@@ -74,6 +74,10 @@
       </v-col>
     </v-row>
 
+    <div class="pa-2 caption grey--text text--darken-3 text-right version">
+      Version: {{ version }}
+    </div>
+
     <v-dialog
         v-model="delete_data_dialog"
         persistent
@@ -113,6 +117,8 @@
 </template>
 
 <script>
+import { version } from '../../../package.json'
+
 export default {
   name: 'SettingsTab',
   data() {
@@ -126,6 +132,7 @@ export default {
       default_tab: '',
       port: null,
       delete_data_dialog: false,
+      version
     }
   },
   mounted() {
@@ -163,5 +170,10 @@ export default {
 </script>
 
 <style scoped>
-
+  .version {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    user-select: none;
+  }
 </style>
