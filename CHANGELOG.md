@@ -1,3 +1,8 @@
+# 1.5.10
+
+Fix:
+- VRChat removed username from friends
+
 # 1.5.9
 
 Added:
