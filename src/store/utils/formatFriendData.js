@@ -81,6 +81,7 @@ const setStatus = (user) => {
                 user.status = {color: '#CCCCCC', name: user.status, power: -1, light: true};
         }
 };
+
 const setBioLinks = (user) => {
     user.bioLinks = user.bioLinks ? user.bioLinks.filter(e => e) : [];
 };

@@ -295,7 +295,7 @@
           <v-row class="pt-2">
             <v-col cols="12" class="pb-0 d-flex justify-center align-center flex-column">
               <h2 class="mr-2 text-h5 font-weight-bold d-inline-block">{{ user_details.displayName }} #{{ user_details.friend_number }}</h2>
-              <span class="caption">{{ user_details.username }}</span>
+              <span v-if="user_details.username" class="caption">{{ user_details.username }}</span>
             </v-col>
             <v-col cols="12" class="pt-1 d-flex justify-center align-center">
               <v-chip
@@ -688,7 +688,7 @@ export default {
     sortedFriends() {
       const filteredFriends = this.friends.filter(e => {
         const displayName = e.displayName.toLowerCase();
-        const userName = e.username.toLowerCase();
+        const userName = (e.username || '').toLowerCase();
         const searchField = this.friend_search ? this.friend_search.toLowerCase() : '';
 
         return displayName.includes(searchField) || userName.includes(searchField);

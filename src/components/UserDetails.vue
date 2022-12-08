@@ -69,7 +69,7 @@
               {{ friend.rank.name }}
             </v-chip>
           </v-col>
-          <v-col cols="12" class="pt-0">
+          <v-col v-if="friend.username" cols="12" class="pt-0">
             <span class="caption">{{ friend.username }}</span>
           </v-col>
           <v-col cols="12" v-if="friend.statusDescription">
