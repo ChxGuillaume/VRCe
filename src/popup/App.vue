@@ -4,13 +4,14 @@
   </v-app>
 </template>
 
-<script>
-import Popup from "../components/Popup";
+<script lang="ts">
+import {defineComponent} from 'vue';
+import Popup from "../components/Popup.vue";
 
-export default {
+export default defineComponent({
   name: 'App',
   components: {Popup}
-}
+})
 </script>
 
 <style lang="scss">
@@ -23,9 +24,5 @@ body {
   width: max(100vw, 400px);
   min-height: 72px;
   max-height: max(100vh, 600px);
-}
-
-* {
-  overflow-y: unset;
 }
 </style>

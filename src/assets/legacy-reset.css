@@ -1,0 +1,11 @@
+/* Vuetify 4 dropped its global CSS reset, restore the spacing reset the UI was designed with. */
+@layer vuetify-core.reset {
+  ul, ol, figure, details, summary {
+    padding: 0;
+    margin: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6, p {
+    margin: 0;
+  }
+}

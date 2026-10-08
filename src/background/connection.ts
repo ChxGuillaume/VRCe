@@ -1,0 +1,172 @@
+import {type EventsPortMessage, MessageType} from '../shared/messages';
+import type {PipelineEvent} from '../types/events';
+import {getCurrentUser, isCloudflareError, isUnauthorized, PIPELINE_URL} from '../shared/vrchat-api';
+import {addEvent, getRecentEvents} from './events-db';
+import {parseEventContent} from './event-content';
+import {notifyDisconnected, notifyForEvent} from './notifications';
+
+const VRCHAT_URL = 'https://vrchat.com';
+const KNOWN_CLOSE = 'known_close';
+const RECONNECT_DELAY_MS = 2000;
+// A service worker is stopped after 30s of inactivity, extension API calls reset that timer.
+const KEEPALIVE_INTERVAL_MS = 20 * 1000;
+
+const eventPorts = new Set<chrome.runtime.Port>();
+
+let socket: WebSocket | null = null;
+let authToken: string | null = null;
+// Token the pipeline answered with an error, don't hammer it until the cookie changes.
+let rejectedToken: string | null = null;
+let keepAliveTimer: ReturnType<typeof setInterval> | undefined;
+let refreshQueue: Promise<void> = Promise.resolve();
+
+export function broadcast(message: EventsPortMessage): void {
+    eventPorts.forEach(port => port.postMessage(message));
+}
+
+export async function addEventsPort(port: chrome.runtime.Port): Promise<void> {
+    eventPorts.add(port);
+    port.onDisconnect.addListener(() => eventPorts.delete(port));
+
+    // Wait for a pending refresh so a freshly woken worker knows whether the user is logged in.
+    await refreshQueue;
+
+    const message: EventsPortMessage = {type: MessageType.ALL_EVENTS, events: authToken ? await getRecentEvents() : []};
+    port.postMessage(message);
+}
+
+// Reads the VRChat auth cookie and (re)connects the pipeline socket when needed.
+// Calls are queued so concurrent triggers (cookie change, alarm, popup) never open two sockets.
+export function refreshConnection(): Promise<void> {
+    refreshQueue = refreshQueue
+        .then(syncWithAuthCookie)
+        .catch(e => console.error('Failed to refresh VRChat connection', e));
+
+    return refreshQueue;
+}
+
+export function closeConnection(): void {
+    closeSocket();
+}
+
+async function syncWithAuthCookie(): Promise<void> {
+    const cookie = await chrome.cookies.get({name: 'auth', url: VRCHAT_URL});
+
+    if (!cookie) {
+        authToken = null;
+        closeSocket();
+        broadcast({type: MessageType.ALL_EVENTS, events: []});
+    } else if (cookie.value !== rejectedToken && (cookie.value !== authToken || !isSocketAlive())) {
+        const tokenChanged = cookie.value !== authToken;
+        authToken = cookie.value;
+
+        if (tokenChanged) broadcast({type: MessageType.ALL_EVENTS, events: await getRecentEvents()});
+
+        createSocket(cookie.value);
+    }
+}
+
+function isSocketAlive(): boolean {
+    return socket !== null && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN);
+}
+
+function closeSocket(): void {
+    if (!socket) return;
+
+    const closing = socket;
+    socket = null;
+    stopKeepAlive();
+    closing.close(1000, KNOWN_CLOSE);
+}
+
+function createSocket(token: string): void {
+    closeSocket();
+
+    const ws = new WebSocket(`${PIPELINE_URL}?authToken=${encodeURIComponent(token)}`);
+    socket = ws;
+
+    ws.onopen = () => {
+        console.log('Socket opened');
+
+        startKeepAlive();
+        setOnlineStatus(true);
+    };
+
+    ws.onmessage = (ev) => handleSocketMessage(ev, token).catch(e => console.error('Could not handle socket message', e));
+
+    ws.onerror = (ev) => console.error('Socket error', ev);
+
+    ws.onclose = (ev) => {
+        console.log(`Socket closed, code: ${ev.code}, reason: "${ev.reason}"`);
+
+        if (socket === ws) {
+            socket = null;
+            stopKeepAlive();
+        }
+
+        checkSession();
+
+        if (ev.reason !== KNOWN_CLOSE && token !== rejectedToken)
+            setTimeout(refreshConnection, RECONNECT_DELAY_MS);
+    };
+}
+
+async function handleSocketMessage(ev: MessageEvent<string>, token: string): Promise<void> {
+    const message = JSON.parse(ev.data) as {type: string; content?: unknown; err?: string};
+
+    if (message.err) {
+        rejectedToken = token;
+        console.warn('Socket Error', message);
+        return;
+    }
+
+    const event: PipelineEvent = {
+        uid: crypto.randomUUID(),
+        type: message.type,
+        date: new Date(),
+        content: await parseEventContent(message.type, message.content)
+    };
+
+    addEvent(event).catch(e => console.error('Could not store event', e));
+    notifyForEvent(event).catch(e => console.error('Could not notify event', e));
+
+    broadcast({type: MessageType.NEW_EVENTS, event});
+}
+
+async function checkSession(): Promise<void> {
+    try {
+        await getCurrentUser();
+    } catch (e) {
+        if (isUnauthorized(e)) await setOnlineStatus(false);
+        else if (isCloudflareError(e)) console.warn('Cloudflare error?!');
+        else console.warn('Could not check VRChat session', e);
+    }
+}
+
+async function setOnlineStatus(online: boolean): Promise<void> {
+    // Survives service worker restarts, so the user is only notified when the status changes.
+    const {online: wasOnline} = await chrome.storage.session.get<{online?: boolean}>('online');
+    await chrome.storage.session.set({online});
+
+    const suffix = online ? '' : '-offline';
+
+    await chrome.action.setIcon({
+        path: {
+            '19': `icons/vrce-logo-19_x_19${suffix}.png`,
+            '38': `icons/vrce-logo-38_x_38${suffix}.png`
+        }
+    });
+    await chrome.action.setTitle({title: online ? 'VRCe - Online' : 'VRCe - Offline'});
+
+    if (!online && wasOnline !== false) await notifyDisconnected();
+}
+
+function startKeepAlive(): void {
+    stopKeepAlive();
+    keepAliveTimer = setInterval(() => chrome.runtime.getPlatformInfo(), KEEPALIVE_INTERVAL_MS);
+}
+
+function stopKeepAlive(): void {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = undefined;
+}

@@ -4,15 +4,16 @@
       color="transparent"
       max-width="100%"
       height="max(calc(100vh - 216px), 384px)"
-      tile
+      rounded="0"
+      flat
   >
     <v-row class="mx-0">
       <v-col cols="12" class="d-flex justify-center align-center">
-        <v-btn icon small color="grey darken-1" class="mr-1" @click="show_icons = !show_icons">
+        <v-btn icon size="small" variant="text" color="grey-darken-1" class="mr-1" @click="show_icons = !show_icons">
           <v-icon>{{ show_icons ? 'remove' : 'add' }}</v-icon>
         </v-btn>
         <h3 class="mr-5 text-center">Icons ({{ Icons.length }} / 64)</h3>
-        <v-btn color="primary" small href="https://vrchat.com/home/gallery" target="_blank">
+        <v-btn color="primary" size="small" href="https://vrchat.com/home/gallery" target="_blank">
           Upload
         </v-btn>
       </v-col>
@@ -28,24 +29,20 @@
             style="position: relative; cursor: pointer"
         >
           <div
-              class="d-inline-block pa-1 rounded-circle darken-2"
-              :class="{ 'green': icon.current, 'grey': !icon.current }"
+              class="d-inline-block pa-1 rounded-circle"
+              :class="{ 'bg-green-darken-2': icon.current, 'bg-grey-darken-2': !icon.current }"
               style="position: relative; cursor: pointer"
               @click="changeIcon($event, icon.url)"
           >
-            <v-btn fab absolute x-small class="deleteBtn" color="red" @click="delete_file_id = icon.id">
-              <v-icon small>delete</v-icon>
+            <v-btn icon size="x-small" position="absolute" class="deleteBtn" color="red" @click.stop="delete_file_id = icon.id">
+              <v-icon size="small">delete</v-icon>
             </v-btn>
-            <v-img class="rounded-circle" :src="icon.url" width="68" height="68">
+            <v-img class="rounded-circle" :src="icon.url" width="68" height="68" cover>
               <template v-slot:placeholder>
-                <v-row
-                    class="fill-height ma-0"
-                    align="center"
-                    justify="center"
-                >
+                <v-row class="fill-height ma-0 align-center justify-center">
                   <v-progress-circular
                       indeterminate
-                      color="grey lighten-5"
+                      color="grey-lighten-5"
                   />
                 </v-row>
               </template>
@@ -56,11 +53,11 @@
     </v-expand-transition>
     <v-row class="mx-0">
       <v-col cols="12" class="d-flex justify-center align-center">
-        <v-btn icon small color="grey darken-1" class="mr-1" @click="show_pictures = !show_pictures">
+        <v-btn icon size="small" variant="text" color="grey-darken-1" class="mr-1" @click="show_pictures = !show_pictures">
           <v-icon>{{ show_pictures ? 'remove' : 'add' }}</v-icon>
         </v-btn>
         <h3 class="mr-5 text-center">Pictures ({{ Pictures.length }} / 64)</h3>
-        <v-btn color="primary" small href="https://vrchat.com/home/gallery" target="_blank">
+        <v-btn color="primary" size="small" href="https://vrchat.com/home/gallery" target="_blank">
           Upload
         </v-btn>
       </v-col>
@@ -74,27 +71,21 @@
             sm="4"
             md="3"
             class="text-center"
-            style="position: relative; cursor: pointer"
+            style="position: relative"
         >
           <div
-              class="d-inline-block pa-1 rounded darken-2"
-              :class="{ 'green': picture.current, 'grey': !picture.current }"
-              style="position: relative; cursor: pointer"
-              @click="changePicture($event, picture.url)"
+              class="d-inline-block pa-1 rounded bg-grey-darken-2"
+              style="position: relative"
           >
-            <v-btn fab absolute x-small class="deleteBtn" color="red" @click="delete_file_id = picture.id">
-              <v-icon small>delete</v-icon>
+            <v-btn icon size="x-small" position="absolute" class="deleteBtn" color="red" @click.stop="delete_file_id = picture.id">
+              <v-icon size="small">delete</v-icon>
             </v-btn>
-            <v-img class="rounded" :src="picture.url" width="162" height="91">
+            <v-img class="rounded" :src="picture.url" width="162" height="91" cover>
               <template v-slot:placeholder>
-                <v-row
-                    class="fill-height ma-0"
-                    align="center"
-                    justify="center"
-                >
+                <v-row class="fill-height ma-0 align-center justify-center">
                   <v-progress-circular
                       indeterminate
-                      color="grey lighten-5"
+                      color="grey-lighten-5"
                   />
                 </v-row>
               </template>
@@ -106,24 +97,25 @@
 
     <v-dialog
         max-width="220"
-        :value="delete_file_id"
+        :model-value="!!delete_file_id"
+        @update:model-value="value => { if (!value) delete_file_id = '' }"
     >
       <v-card>
-        <v-card-title class="text-h5">
+        <v-card-title class="text-headline-small">
           Are you sure ?
         </v-card-title>
         <v-card-actions>
           <v-spacer/>
           <v-btn
-              color="red darken-1"
-              text
+              color="red-darken-1"
+              variant="text"
               @click="delete_file_id = ''"
           >
             No
           </v-btn>
           <v-btn
-              color="green darken-1"
-              text
+              color="green-darken-1"
+              variant="text"
               @click="deleteFile"
           >
             Yes
@@ -134,112 +126,110 @@
   </v-card>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import {defineComponent, type PropType} from 'vue';
+import {deleteFile, getFiles, getProfile, updateProfile} from '../../shared/vrchat-api';
+import type {VRChatFile} from '../../types/vrchat';
+
+// Only the fields of the popup's current user the tab reads.
+interface GalleryUser {
+  id: string;
+}
+
+type GalleryFile = VRChatFile & {url: string};
+
+type GalleryIcon = GalleryFile & {current: boolean};
+
+const fileId = (url: string | undefined) => url?.match(/(file_[^/]+)/)?.[1];
+
+// Image of the latest version of a file.
+const fileUrl = (file: VRChatFile) => `https://api.vrchat.cloud/api/1/file/${file.id}/${file.versions?.at(-1)?.version ?? 1}`;
+
+const withUrl = (file: VRChatFile): GalleryFile => ({...file, url: fileUrl(file)});
+
+export default defineComponent({
   name: 'GalleryTab',
+  emits: {
+    'new-user-data': (user: GalleryUser & {userIcon: string}) => !!user.id
+  },
   props: {
     user_data: {
-      type: Object,
+      type: Object as PropType<GalleryUser>,
       required: true
     }
   },
   data() {
     return {
-      icons: [],
-      pictures: [],
+      icons: [] as GalleryFile[],
+      pictures: [] as GalleryFile[],
+      // The current user no longer carries its icon, it comes from its profile.
+      current_icon: '',
       show_icons: true,
       show_pictures: true,
       delete_file_id: ''
     }
   },
   computed: {
-    Icons() {
-      const icons = this.icons.slice();
+    Icons(): GalleryIcon[] {
+      const currentIconId = fileId(this.current_icon);
 
-      icons.forEach(e => e.current = e.url.match(/(file_.*?)\//)[1] === this.user_data.userIcon.match(/(file_.*?)\//)[1]);
-
-      return icons;
+      return this.icons.map(icon => ({...icon, current: !!currentIconId && fileId(icon.url) === currentIconId}));
     },
-    Pictures() {
-      const pictures = this.pictures.slice();
-
-      pictures.forEach(e => e.current = e.url.match(/(file_.*?)\//)[1] === this.user_data.profilePicOverride.match(/(file_.*?)\//)[1]);
-
-      return pictures;
+    Pictures(): GalleryFile[] {
+      return this.pictures;
     }
   },
   mounted() {
+    this.fetchCurrentIcon();
     this.fetchIcons();
     this.fetchPictures();
   },
   methods: {
-    fetchIcons() {
-      fetch('https://vrchat.com/api/1/files?tag=icon&n=100')
-          .then(res => res.json())
-          .then((data) => {
-            data.forEach(e => {
-              e.current = false;
-              e.url = `https://api.vrchat.cloud/api/1/file/${e.id}/1`;
-            });
+    fetchCurrentIcon(): void {
+      getProfile(this.user_data.id)
+          .then(profile => this.current_icon = profile.userIcon || '')
+          .catch(e => console.error('Could not fetch the current icon', e));
+    },
+    fetchIcons(): void {
+      getFiles('icon')
+          .then(data => this.icons = data.map(withUrl))
+          .catch(e => console.error('Could not fetch icons', e));
+    },
+    fetchPictures(): void {
+      getFiles('gallery')
+          .then(data => this.pictures = data.map(withUrl))
+          .catch(e => console.error('Could not fetch gallery pictures', e));
+    },
+    changeIcon(ev: MouseEvent, url: string): void {
+      const target = ev.target as Element;
 
-            this.icons = data;
+      if (target.classList.contains('v-icon')
+          || target.classList.contains('v-btn')
+          || target.classList.contains('v-btn__content'))
+        return;
+
+      // Icons are profile fields now, the response is the public profile, not the user.
+      updateProfile(this.user_data.id, {userIcon: url})
+          .then(profile => {
+            this.current_icon = profile.userIcon || url;
+            this.$emit('new-user-data', {...this.user_data, userIcon: this.current_icon});
           })
+          .catch(e => console.error('Could not change the icon', e));
     },
-    fetchPictures() {
-      fetch('https://vrchat.com/api/1/files?tag=gallery&n=100')
-          .then(res => res.json())
-          .then((data) => {
-            data.forEach(e => {
-              e.current = false;
-              e.url = `https://api.vrchat.cloud/api/1/file/${e.id}/1`;
-            });
+    deleteFile(): void {
+      const fileId = this.delete_file_id;
 
-            this.pictures = data;
+      deleteFile(fileId)
+          .then(() => {
+            this.icons = this.icons.filter(e => e.id !== fileId);
+            this.pictures = this.pictures.filter(e => e.id !== fileId);
           })
-    },
-    changeIcon(ev, url) {
-      if (!ev.target.classList.contains('v-icon')
-          && !ev.target.classList.contains('v-btn')
-          && !ev.target.classList.contains('v-btn__content'))
-        fetch(`https://vrchat.com/api/1/users/${this.user_data.id}`, {
-          'headers': {'content-type': 'application/json;charset=UTF-8'},
-          'body': JSON.stringify({'userIcon': url}),
-          'method': 'PUT'
-        })
-            .then(res => res.json())
-            .then(data => {
-              this.$emit('new-user-data', data);
-            });
-    },
-    changePicture(ev, url) {
-      if (!ev.target.classList.contains('v-icon')
-          && !ev.target.classList.contains('v-btn')
-          && !ev.target.classList.contains('v-btn__content'))
-        fetch(`https://vrchat.com/api/1/users/${this.user_data.id}`, {
-          'headers': {'content-type': 'application/json;charset=UTF-8'},
-          'body': JSON.stringify({'profilePicOverride': url}),
-          'method': 'PUT'
-        })
-            .then(res => res.json())
-            .then(data => {
-              this.$emit('new-user-data', data);
-            });
-    },
-    deleteFile() {
-      const iconIndex = this.icons.findIndex(e => e.id === this.delete_file_id);
-      const pictureIndex = this.pictures.findIndex(e => e.id === this.delete_file_id);
-
-      fetch(`https://vrchat.com/api/1/file/${this.delete_file_id}`, {
-        method: 'DELETE'
-      }).then(() => {
-        if (iconIndex >= 0) this.icons.splice(iconIndex, 1);
-        if (pictureIndex >= 0) this.pictures.splice(pictureIndex, 1);
-      })
+          .catch(e => console.error(`Could not delete file ${fileId}`, e));
 
       this.delete_file_id = '';
     }
   }
-}
+})
 </script>
 
 <style scoped>

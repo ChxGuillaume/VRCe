@@ -4,11 +4,12 @@
   </v-app>
 </template>
 
-<script>
+<script lang="ts">
+import {defineComponent} from 'vue';
+import Standalone from '../components/Standalone.vue';
 
-import Standalone from "../components/Standalone";
-export default {
+export default defineComponent({
   name: 'App',
   components: {Standalone}
-}
+});
 </script>

@@ -27,3 +27,6 @@ pnpm-debug.log*
 *.pub
 *.zip
 /artifacts
+
+# Git Bash crash dumps
+*.stackdump

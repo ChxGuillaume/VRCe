@@ -1,11 +1,16 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "VRCe - Manage your VRChat experience.",
   "description": "This extension allows you to see VRChat.com websites data with a better interface.",
   "default_locale": "en",
+  "minimum_chrome_version": "116",
   "permissions": [
+    "alarms",
     "cookies",
     "notifications",
+    "storage"
+  ],
+  "host_permissions": [
     "https://vrchat.com/*"
   ],
   "icons": {
@@ -14,9 +19,10 @@
     "128": "icons/vrce-logo-128_x_128.png"
   },
   "background": {
-    "scripts": ["js/background.js"]
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "browser_action": {
+  "action": {
     "default_popup": "popup.html",
     "default_title": "VRCe",
     "default_icon": {
