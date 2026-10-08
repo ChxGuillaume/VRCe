@@ -84,15 +84,27 @@
   </v-card>
 </template>
 
-<script>
-import {DEFAULT_SETTINGS, getSettings, saveSettings} from '../../shared/storage';
+<script lang="ts">
+import {defineComponent} from 'vue';
+import {DEFAULT_SETTINGS, getSettings, saveSettings, type Settings} from '../../shared/storage';
 import {MessageType, sendToBackground} from '../../shared/messages';
 
-export default {
+type SettingKey = keyof Settings;
+
+interface SettingItem {
+  value: SettingKey;
+  title: string;
+  subtitle: string;
+}
+
+const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as SettingKey[];
+
+export default defineComponent({
   name: 'SettingsTab',
   data() {
     return {
-      settings: [],
+      // Enabled settings.
+      settings: [] as SettingKey[],
       setting_items: [
         {
           value: 'notify_online',
@@ -109,7 +121,7 @@ export default {
           title: 'Notify on Notifications',
           subtitle: 'Invite, Invite Request, Reply, Friend Request'
         }
-      ],
+      ] as SettingItem[],
       tabs: [
         {text: 'Friends', value: 'friends'},
         {text: 'Worlds', value: 'worlds'},
@@ -123,22 +135,23 @@ export default {
     this.default_tab = localStorage.getItem('default_tab') || 'friends';
 
     const settings = await getSettings();
-    this.settings = Object.keys(settings).filter(e => settings[e]);
+    this.settings = SETTING_KEYS.filter(key => settings[key]);
   },
   methods: {
-    saveSettings() {
-      saveSettings(Object.fromEntries(
-          Object.keys(DEFAULT_SETTINGS).map(key => [key, this.settings.includes(key)])
-      ));
+    saveSettings(): void {
+      const settings: Settings = {...DEFAULT_SETTINGS};
+      SETTING_KEYS.forEach(key => settings[key] = this.settings.includes(key));
+
+      saveSettings(settings);
     },
-    clearEvents() {
+    clearEvents(): void {
       this.delete_data_dialog = false;
 
       sendToBackground(MessageType.CLEAR_EVENTS);
     },
-    saveDefaultTab() {
+    saveDefaultTab(): void {
       localStorage.setItem('default_tab', this.default_tab);
     }
   }
-}
+})
 </script>

@@ -1,11 +1,12 @@
 import {getFavoriteFriends, getSettings} from '../shared/storage';
+import type {PipelineEvent, PipelineEventContent} from '../types/events';
 
 export const LOGIN_NOTIFICATION_ID = 'openLoginPage';
 
 const DEFAULT_ICON = chrome.runtime.getURL('icons/vrce-logo-128_x_128.png');
 const IMAGE_PROXY_URL = 'http://nekotiki.fr:55555/';
 
-export function notifyDisconnected() {
+export function notifyDisconnected(): Promise<string> {
     return chrome.notifications.create(LOGIN_NOTIFICATION_ID, {
         type: 'basic',
         title: 'Disconnected',
@@ -14,7 +15,7 @@ export function notifyDisconnected() {
     });
 }
 
-export async function notifyForEvent(event) {
+export async function notifyForEvent(event: PipelineEvent): Promise<void> {
     const settings = await getSettings();
 
     if (event.type === 'friend-online' && event.content?.user) {
@@ -33,9 +34,9 @@ export async function notifyForEvent(event) {
         await chrome.notifications.create(await vrcNotificationOptions(event.content));
 }
 
-async function vrcNotificationOptions(content) {
+async function vrcNotificationOptions(content: PipelineEventContent): Promise<chrome.notifications.NotificationCreateOptions> {
     const details = content.details || {};
-    const notification = {
+    const notification: chrome.notifications.NotificationCreateOptions = {
         type: 'basic',
         title: 'Not set ?',
         message: 'Not set ?',
@@ -90,7 +91,7 @@ async function vrcNotificationOptions(content) {
 }
 
 // Service workers have no FileReader-friendly DOM helpers, build the data URL by hand.
-async function fetchAsDataUrl(url) {
+async function fetchAsDataUrl(url: string): Promise<string> {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 

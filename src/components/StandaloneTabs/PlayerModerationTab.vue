@@ -39,7 +39,8 @@
         sm="4"
         md="3"
         lg="2"
-        @click="$refs.userDetails.fetchUser(user.targetUserId)"
+        @click="openUser(user.targetUserId)"
+
       >
         <v-row density="compact">
           <v-col cols="2" class="d-flex align-center">
@@ -62,12 +63,66 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import {defineComponent} from 'vue';
 import dayjs from 'dayjs';
 import UserDetails from '../UserDetails.vue';
 import {getPlayerModerations} from '../../shared/vrchat-api';
+import type {PlayerModeration} from '../../types/vrchat';
 
-export default {
+interface ModerationRow extends PlayerModeration {
+  icon: string;
+  icon_text: string;
+}
+
+interface ModerationTypeStat {
+  type: string;
+  icon: string;
+  icon_text: string;
+  count: number;
+}
+
+interface PlayerModerationData {
+  loading: boolean;
+  type_filter: string[];
+  name_filter: string | null;
+  player_moderation: ModerationRow[];
+}
+
+// Icon and label of each moderation type, unknown types fall back to their raw name.
+const TYPE_DISPLAY: Record<string, {icon_text: string; icon: string}> = {
+  mute: {icon_text: 'Mute', icon: 'volume_off'},
+  unmute: {icon_text: 'Unmute', icon: 'volume_up'},
+  muteChat: {icon_text: 'Mute Chat', icon: 'speaker_notes_off'},
+  unmuteChat: {icon_text: 'Unmute Chat', icon: 'chat'},
+  interactOff: {icon_text: 'Interact Off', icon: 'do_not_touch'},
+  interactOn: {icon_text: 'Interact On', icon: 'touch_app'},
+  showAvatar: {icon_text: 'Show Avatar', icon: 'visibility'},
+  hideAvatar: {icon_text: 'Hide Avatar', icon: 'visibility_off'},
+  block: {icon_text: 'Block', icon: 'block'}
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  mute: 'brown',
+  unmute: 'blue',
+  showAvatar: 'green',
+  hideAvatar: 'orange',
+  block: 'red',
+  muteChat: 'deep-orange',
+  unmuteChat: 'light-blue',
+  interactOff: 'purple',
+  interactOn: 'teal'
+};
+
+function toModerationRow(moderation: PlayerModeration): ModerationRow {
+  return {
+    ...moderation,
+    ...(TYPE_DISPLAY[moderation.type] || {icon_text: moderation.type, icon: 'help_outline'}),
+    created: dayjs(moderation.created).format('YYYY-MM-DD HH:mm:ss')
+  };
+}
+
+export default defineComponent({
   name: 'PlayerModerationTab',
   components: {UserDetails},
   props: {
@@ -76,138 +131,60 @@ export default {
       required: true
     }
   },
-  data() {
+  data(): PlayerModerationData {
     return {
       loading: true,
       type_filter: [],
       name_filter: '',
-      player_moderation: [],
-      player_moderation_headers: [
-        {title: 'User', align: 'start', key: 'targetDisplayName'},
-        {title: 'Type', align: 'start', key: 'type'},
-        {title: 'Date', align: 'start', key: 'created'},
-      ],
+      player_moderation: []
     }
   },
   computed: {
-    playerModerationOrdered() {
+    playerModerationOrdered(): ModerationRow[] {
       return [...this.player_moderation].sort((a, b) => b.created.localeCompare(a.created))
     },
-    playerModerationFiltered() {
+    playerModerationFiltered(): ModerationRow[] {
+      const nameFilter = (this.name_filter || '').toLowerCase();
+
       return this.playerModerationOrdered
           .filter(e =>
-              (!this.type_filter.length ^ this.type_filter.includes(e.type))
-              && ((e.targetDisplayName || '').toLowerCase().includes((this.name_filter || '').toLowerCase()))
+              (!this.type_filter.length || this.type_filter.includes(e.type))
+              && (e.targetDisplayName || '').toLowerCase().includes(nameFilter)
           )
     },
-    playerModerationTypes () {
-      const types = {};
+    playerModerationTypes(): ModerationTypeStat[] {
+      const types = new Map<string, ModerationTypeStat>();
 
       this.player_moderation.forEach(pm => {
-        if (!types[pm.type])
-          types[pm.type] = {
-            type: pm.type,
-            icon: pm.icon,
-            icon_text: pm.icon_text,
-            count: 1
-          }
-        else
-          types[pm.type].count++;
+        const stat = types.get(pm.type);
+
+        if (stat) stat.count++;
+        else types.set(pm.type, {type: pm.type, icon: pm.icon, icon_text: pm.icon_text, count: 1});
       });
 
-      return Object.values(types);
+      return [...types.values()];
     }
   },
   mounted() {
     this.getPlayerModeration();
   },
   methods: {
-    getPlayerModeration() {
+    getPlayerModeration(): void {
       getPlayerModerations()
           .then(data => {
-            data.forEach(e => this.updateRow(e));
-
-            this.player_moderation = data;
+            this.player_moderation = data.map(toModerationRow);
           })
           .catch(e => console.warn('Could not fetch player moderations', e))
           .finally(() => this.loading = false);
     },
-    updateRow(row) {
-      this.setIcon(row);
-      this.setCreated(row);
+    openUser(userId: string): void {
+      (this.$refs.userDetails as InstanceType<typeof UserDetails>).fetchUser(userId);
     },
-    setIcon(row) {
-      switch (row.type) {
-        case 'mute':
-          row.icon_text = 'Mute';
-          row.icon = 'volume_off';
-          break;
-        case 'unmute':
-          row.icon_text = 'Unmute';
-          row.icon = 'volume_up';
-          break;
-        case 'muteChat':
-          row.icon_text = 'Mute Chat';
-          row.icon = 'speaker_notes_off';
-          break;
-        case 'unmuteChat':
-          row.icon_text = 'Unmute Chat';
-          row.icon = 'chat';
-          break;
-        case 'interactOff':
-          row.icon_text = 'Interact Off';
-          row.icon = 'do_not_touch';
-          break;
-        case 'interactOn':
-          row.icon_text = 'Interact On';
-          row.icon = 'touch_app';
-          break;
-        case 'showAvatar':
-          row.icon_text = 'Show Avatar';
-          row.icon = 'visibility';
-          break;
-        case 'hideAvatar':
-          row.icon_text = 'Hide Avatar';
-          row.icon = 'visibility_off';
-          break;
-        case 'block':
-          row.icon_text = 'Block';
-          row.icon = 'block';
-          break;
-        default:
-          row.icon_text = row.type;
-          row.icon = 'help_outline';
-      }
-    },
-    getTypeColor(type) {
-      switch (type) {
-        case 'mute':
-          return 'brown';
-        case 'unmute':
-          return 'blue';
-        case 'showAvatar':
-          return 'green';
-        case 'hideAvatar':
-          return 'orange';
-        case 'block':
-          return 'red';
-        case 'muteChat':
-          return 'deep-orange';
-        case 'unmuteChat':
-          return 'light-blue';
-        case 'interactOff':
-          return 'purple';
-        case 'interactOn':
-          return 'teal';
-        default:
-          return 'grey';
-      }
-    },
-    setCreated(row) {
-      row.created = dayjs(row.created).format('YYYY-MM-DD HH:mm:ss');
+    getTypeColor(type: string): string {
+      return TYPE_COLORS[type] || 'grey';
     }
   }
-}
+})
 </script>
 
 <style lang="scss" scoped>

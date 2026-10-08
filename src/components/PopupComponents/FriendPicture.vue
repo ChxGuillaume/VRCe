@@ -25,18 +25,22 @@
   </v-card>
 </template>
 
-<script>
-import {userImageUrl} from '../../shared/vrchat-api';
+<script lang="ts">
+import {defineComponent, type PropType} from 'vue';
+import {userImageUrl, type UserImageSource} from '../../shared/vrchat-api';
 
-export default {
+// Any user object with a picture, optionally flagged as a favorite friend.
+export type FriendPictureUser = UserImageSource & {favorited?: boolean};
+
+export default defineComponent({
   props: {
     friend: {
-      type: Object,
+      type: Object as PropType<FriendPictureUser>,
       required: true,
     },
   },
   methods: {
     userImageUrl
   }
-}
+})
 </script>

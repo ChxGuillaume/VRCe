@@ -4,13 +4,14 @@
   </v-app>
 </template>
 
-<script>
+<script lang="ts">
+import {defineComponent} from 'vue';
 import Popup from "../components/Popup.vue";
 
-export default {
+export default defineComponent({
   name: 'App',
   components: {Popup}
-}
+})
 </script>
 
 <style lang="scss">

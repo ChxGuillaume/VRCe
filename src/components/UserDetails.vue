@@ -25,7 +25,10 @@
         <span>Close</span>
       </v-tooltip>
 
-      <v-card-text>
+      <v-card-text v-if="!friend" class="d-flex justify-center py-8">
+        <v-progress-circular indeterminate/>
+      </v-card-text>
+      <v-card-text v-else>
         <v-row>
           <v-col cols="12" class="text-end">
             <div v-if="friend.userIcon" class="d-inline-block rounded pa-1 mx-2"
@@ -36,10 +39,7 @@
                  :style="{ background: friend.rank ? friend.rank.color : '' }">
               <v-img class="rounded" :src="friend.currentAvatarThumbnailImageUrl" height="75" width="100" cover/>
             </div>
-            <div v-if="friend.profilePicOverride" class="d-inline-block rounded pa-1 mx-2"
-                 :style="{ background: friend.rank ? friend.rank.color : '' }">
-              <v-img class="rounded" :src="friend.profilePicOverride" height="75" width="100" cover/>
-            </div>
+
           </v-col>
           <v-col cols="12" class="d-flex align-center pb-0">
             <h2 class="d-inline-block">{{ friend.displayName }}</h2>
@@ -178,11 +178,17 @@
   </v-dialog>
 </template>
 
-<script>
-import dayjs from 'dayjs';
+<script lang="ts">
+import {defineComponent} from 'vue';
 import {getUserWithProfile, getWorld} from '../shared/vrchat-api';
+import {toUserRow, type UserRow} from '../types/standalone-users';
 
-export default {
+interface UserDetailsData {
+  dialog: boolean;
+  friend: UserRow | null;
+}
+
+export default defineComponent({
   name: 'UserDetails',
   props: {
     fullscreen: {
@@ -193,122 +199,38 @@ export default {
       required: true
     }
   },
-  data() {
+  data(): UserDetailsData {
     return {
       dialog: false,
-      friend: {}
+      friend: null
     }
   },
   methods: {
-    fetchUser(id = null) {
+    fetchUser(id: string | null = null): void {
       if (!id) return;
 
       this.dialog = true;
-      this.friend = {};
+      this.friend = null;
 
       getUserWithProfile(id)
           .then(data => {
-            this.setUserData(data);
-            this.friend = data;
+            this.friend = toUserRow(data);
 
             if (data.worldId && !['private', 'offline'].includes(data.worldId))
               this.fetchWorld(data.id, data.worldId);
           })
           .catch(e => console.warn(`Could not fetch user ${id}`, e));
     },
-    fetchWorld(userId, worldId) {
+    fetchWorld(userId: string, worldId: string): void {
       getWorld(worldId)
           .then(data => {
             // Go through the reactive proxy, and ignore late answers for a previously opened user
-            if (this.friend.id === userId) this.friend.world = data;
+            if (this.friend?.id === userId) this.friend.world = data;
           })
           .catch(e => console.warn(`Could not fetch world ${worldId}`, e));
-    },
-    setUserData(user) {
-      this.setRank(user);
-      this.setState(user);
-      this.setStatus(user);
-      this.setBioLinks(user);
-      this.setLanguages(user);
-      this.setLastLogin(user);
-      this.setLastPlatform(user);
-    },
-    setRank(user) {
-      const tags = user.tags
-
-      if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF69B4', name: 'Legend', power: 0}
-      } else if (tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#5D88BB', name: 'Veteran', power: 1}
-      } else if (tags.includes('system_trust_veteran') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#8143E6', name: 'Trusted', power: 2}
-      } else if (tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF7B42', name: 'Known', power: 3}
-      } else if (tags.includes('system_trust_known')) {
-        user.rank = {color: '#2BCF5C', name: 'User', power: 4}
-      } else if (tags.includes('system_trust_basic')) {
-        user.rank = {color: '#1778FF', name: 'New User', power: 5}
-      } else {
-        user.rank = {color: '#CCCCCC', name: 'Visitor', power: 6}
-      }
-    },
-    setState(user) {
-      switch (user.state) {
-        case 'online':
-          user.state = {color: '#60ad5e', name: 'Online', power: 0};
-          break;
-        case 'active':
-          user.state = {color: '#ebd23b', name: 'Active', power: 1};
-          break;
-        case 'offline':
-          user.state = {color: '#dddddd', name: 'Offline', power: 2, light: true};
-          break;
-        default:
-          user.state = {color: '#CCCCCC', name: user.state, power: 3, light: true};
-      }
-    },
-    setStatus(user) {
-      switch (user.status) {
-        case 'join me':
-          user.status = {color: '#42caff', name: 'Join Me', power: 4};
-          break;
-        case 'active':
-          user.status = {color: '#60ad5e', name: 'Active', power: 3};
-          break;
-        case 'ask me':
-          user.status = {color: '#e88134', name: 'Ask Me', power: 2};
-          break;
-        case 'busy':
-          user.status = {color: '#5b0b0b', name: 'Busy', power: 1};
-          break;
-        default:
-          user.status = {color: '#CCCCCC', name: user.status, power: 0};
-      }
-    },
-    setBioLinks(user) {
-      user.bioLinks = (user.bioLinks || []).filter(e => e);
-    },
-    setLanguages(user) {
-      user.langagues = (user.tags || []).filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
-    },
-    setLastLogin(user) {
-      if (!user.last_login) user.last_login = 'Unavailable';
-      else user.last_login = dayjs(user.last_login).format('YYYY-MM-DD HH:mm:ss');
-    },
-    setLastPlatform(user) {
-      switch (user.last_platform) {
-        case 'standalonewindows':
-          user.last_platform = 'PC/VR';
-          break;
-        case 'android':
-          user.last_platform = 'Quest';
-          break;
-      }
-    },
+    }
   }
-}
+})
 </script>
 
-<style scoped>
 
-</style>

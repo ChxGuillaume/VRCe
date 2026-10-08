@@ -81,14 +81,14 @@
             </v-img>
             <div v-else-if="event.type === 'notification'" style="position: relative">
               <v-icon
-                  v-if="event.content.details.imageUrl"
+                  v-if="event.content.details?.imageUrl"
                   size="20" class="mx-auto" :color="getNotificationColor(event.content.type)"
                   style="position: absolute; top: 10px; right : 10px; z-index: 1"
               >
                 {{ getNotificationsIcon(event.content.type) }}
               </v-icon>
               <v-img
-                  v-if="event.content.details.imageUrl"
+                  v-if="event.content.details?.imageUrl"
                   :src="event.content.details.imageUrl"
                   max-width="100"
                   width="100"
@@ -133,7 +133,7 @@
                       v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)"
                       class="text-body-large"
                   >
-                    {{ event_types.find(e => event.type === e.value).text }}
+                    {{ eventTypeName(event.type) }}
                     <span v-if="event.content.user" class="d-block mt-1 text-body-small">
                       {{ event.content.user.displayName }}
                     </span>
@@ -159,7 +159,8 @@
           </v-col>
           <v-expand-transition>
             <v-col
-                v-if="['friend-update', 'user-update'].includes(event.type) && show_changes_items === event.uid"
+                v-if="['friend-update', 'user-update'].includes(event.type) && show_changes_items === event.uid
+                    && event.content.user && event.content.previous_user && event.content.previous_user_changes"
                 cols="12"
                 class="pa-0"
             >
@@ -189,24 +190,45 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import {defineComponent, markRaw, type PropType} from 'vue';
 import dayjs from 'dayjs';
 import PreviousUserChanges from './EventsTab/PreviousUserChanges.vue';
-import {MessageType, subscribeToEvents} from '../../shared/messages';
+import {type EventsPortMessage, MessageType, subscribeToEvents} from '../../shared/messages';
 import {getUserWithProfile, userImageUrl} from '../../shared/vrchat-api';
+import type {EventUser, PipelineEvent} from '../../types/events';
 
-export default {
+// Event as displayed by the tab.
+type DisplayEvent = PipelineEvent & {display_date?: string};
+
+// Any friend object from the popup list, only these fields are read.
+interface KnownFriend {
+  id: string;
+  displayName: string;
+}
+
+interface EventType {
+  text: string;
+  value: string;
+}
+
+const UPDATE_EVENT_TYPES = ['friend-update', 'user-update'];
+const USER_EVENT_TYPES = ['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', ...UPDATE_EVENT_TYPES];
+
+const eventTime = (event: PipelineEvent) => dayjs(event.date).valueOf();
+
+export default defineComponent({
   name: 'EventsTab',
   components: {PreviousUserChanges},
   props: {
     friends: {
-      type: Array,
+      type: Array as PropType<KnownFriend[]>,
       required: true
     }
   },
   data() {
     return {
-      events: [],
+      events: [] as DisplayEvent[],
       event_page: 1,
       event_page_length: 150,
       event_types: [
@@ -219,7 +241,7 @@ export default {
         {text: 'Friend Update', value: 'friend-update'},
         {text: 'User Update', value: 'user-update'},
         {text: 'Notifications', value: 'notification'},
-      ],
+      ] as EventType[],
       event_types_shown: [
         'friend-online',
         'friend-active',
@@ -229,68 +251,64 @@ export default {
         'notification'
       ],
       search: '',
-      users_fetched: [],
-      show_changes_items: null,
-      unsubscribe: null
+      users_fetched: [] as EventUser[],
+      show_changes_items: null as string | null,
+      unsubscribe: null as (() => void) | null,
+      // Pending user requests by id, not reactive on purpose.
+      user_requests: markRaw(new Map<string, Promise<EventUser | null>>())
     }
   },
   computed: {
-    searchedEvents() {
+    searchedEvents(): DisplayEvent[] {
+      const search = (this.search || '').toLowerCase();
+
       return this.events
           .filter(event => {
-            if (!this.search)
+            if (!search)
               return this.event_types_shown.includes(event.type)
             else if (event.content)
               return this.event_types_shown.includes(event.type)
                   && (
-                      (event.content.user
-                          && event.content.user.displayName.toLowerCase().includes(this.search.toLowerCase()))
-                      || (event.content.senderUsername
-                          && event.content.senderUsername.toLowerCase().includes(this.search.toLowerCase()))
-                      || (event.content.world && event.content.world.name
-                          && event.content.world.name.toLowerCase().includes(this.search.toLowerCase()))
+                      !!event.content.user?.displayName?.toLowerCase().includes(search)
+                      || !!event.content.senderUsername?.toLowerCase().includes(search)
+                      || !!event.content.world?.name?.toLowerCase().includes(search)
                   )
             else
               return false
           });
     },
-    listHeight() {
+    listHeight(): string {
       const maxHeight = this.paginationPageCount > 1 ? 280 : 320;
       const removeHeight = this.paginationPageCount <= 1 ? 280 : 320;
 
       return `max(calc(100vh - ${removeHeight}px), ${maxHeight}px)`;
     },
-    filteredEvents() {
+    filteredEvents(): DisplayEvent[] {
       return this.searchedEvents
-          .filter(e => (['friend-update', 'friend-update'].includes(e.type) && e.content.previous_user_changes)
-              || !['friend-update', 'friend-update'].includes(e.type))
-          .sort((a, b) => dayjs(b.date) - dayjs(a.date));
+          .filter(e => e.type !== 'friend-update' || e.content.previous_user_changes)
+          .sort((a, b) => eventTime(b) - eventTime(a));
     },
-    filteredEventsPage() {
+    filteredEventsPage(): DisplayEvent[] {
       return this.filteredEvents
           .slice((this.event_page - 1) * this.event_page_length, this.event_page * this.event_page_length);
     },
-    paginationPageCount() {
+    paginationPageCount(): number {
       return Math.ceil(this.searchedEvents.length / this.event_page_length)
     }
-  },
-  created() {
-    // Pending user requests by id, not reactive on purpose.
-    this.user_requests = new Map();
   },
   mounted() {
     this.loadTypesShown();
 
-    this.unsubscribe = subscribeToEvents((msg) => {
+    this.unsubscribe = subscribeToEvents((msg: EventsPortMessage) => {
       switch (msg.type) {
         case MessageType.ALL_EVENTS:
-          this.events = msg.events.sort((a, b) => dayjs(a.date) - dayjs(b.date));
+          this.events = msg.events.sort((a, b) => eventTime(a) - eventTime(b));
           // Iterate the reactive array so later (async) mutations trigger updates.
           this.events.forEach(event => this.setEventData(event));
           break;
         case MessageType.NEW_EVENTS:
           this.events.push(msg.event);
-          this.setEventData(this.events[this.events.length - 1]);
+          this.setEventData(this.events[this.events.length - 1]!);
           break;
       }
     });
@@ -299,33 +317,41 @@ export default {
     if (this.unsubscribe) this.unsubscribe();
   },
   methods: {
-    eventImageSrc(event) {
-      if (['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type) && event.content.user)
+    eventTypeName(type: string): string {
+      return this.event_types.find(e => e.value === type)?.text ?? type;
+    },
+    eventImageSrc(event: DisplayEvent): string | undefined {
+      if (USER_EVENT_TYPES.includes(event.type) && event.content.user)
         return userImageUrl(event.content.user);
       else if (event.type === 'friend-location' && event.content.location === 'private')
         return 'https://assets.vrchat.com/www/images/default_private_image.png';
       else if (event.type === 'friend-location')
         return event.content.world?.thumbnailImageUrl;
+
+      return undefined;
     },
-    loadTypesShown() {
-      if (localStorage.getItem('popup-events-types-shown'))
-        this.event_types_shown = JSON.parse(localStorage.getItem('popup-events-types-shown'))
+    loadTypesShown(): void {
+      const typesShown = localStorage.getItem('popup-events-types-shown');
+
+      if (typesShown)
+        this.event_types_shown = JSON.parse(typesShown) as string[];
     },
-    saveTypesShown() {
+    saveTypesShown(): void {
       this.event_page = 1;
       localStorage.setItem('popup-events-types-shown', JSON.stringify(this.event_types_shown));
     },
-    setEventData(event) {
+    setEventData(event: DisplayEvent): void {
       event.display_date = dayjs(event.date).format('MM/DD HH:mm:ss')
 
       if (event.type === 'friend-offline' || event.type === 'friend-delete') {
         this.setEventMissingUser(event);
-      } else if (['friend-update', 'user-update'].includes(event.type)) {
+      } else if (UPDATE_EVENT_TYPES.includes(event.type)) {
         this.setEventTypeUpdate(event);
       }
     },
-    setEventMissingUser(event) {
+    setEventMissingUser(event: DisplayEvent): void {
       const userId = event.content.userId;
+      if (!userId) return;
 
       event.content.user = this.friends.find(friend => friend.id === userId)
           || this.users_fetched.find(user => user.id === userId);
@@ -335,15 +361,16 @@ export default {
           if (user) event.content.user = user;
         });
     },
-    setEventTypeUpdate(event) {
+    setEventTypeUpdate(event: DisplayEvent): void {
       const user = event.content.user;
+      if (!user) return;
 
-      let prevUser;
+      let prevUser: EventUser | undefined;
       for (let i = (this.events.length - 1); i > 0; i--) {
-        const iEvent = this.events[i];
+        const iEvent = this.events[i]!;
 
-        if (['friend-update', 'user-update'].includes(iEvent.type)
-            && event.date > iEvent.date
+        if (UPDATE_EVENT_TYPES.includes(iEvent.type)
+            && eventTime(event) > eventTime(iEvent)
             && event.uid !== iEvent.uid
             && iEvent.content.user
             && iEvent.content.user.id === user.id
@@ -354,35 +381,42 @@ export default {
       }
 
       if (prevUser) {
-        Object.keys(user).forEach((key) => {
-          if (user[key] !== prevUser[key]) {
+        const current = user as Record<string, unknown>;
+        const previous = prevUser as Record<string, unknown>;
+
+        Object.keys(current).forEach((key) => {
+          if (current[key] !== previous[key]) {
             event.content.previous_user = prevUser;
 
-            if (typeof user[key] === 'string') {
+            if (typeof current[key] === 'string') {
               if (!event.content.previous_user_changes) event.content.previous_user_changes = {};
 
-              event.content.previous_user_changes[key] = prevUser[key];
+              event.content.previous_user_changes[key] = previous[key] as string;
             }
           }
         });
       }
     },
     // One request per user, shared by every event about that user.
-    fetchUser(user_id) {
-      if (!this.user_requests.has(user_id))
-        this.user_requests.set(user_id, getUserWithProfile(user_id)
-            .then(data => {
+    fetchUser(user_id: string): Promise<EventUser | null> {
+      let request = this.user_requests.get(user_id);
+
+      if (!request) {
+        request = getUserWithProfile(user_id)
+            .then((data): EventUser => {
               this.users_fetched.push(data);
               return data;
             })
-            .catch(e => {
+            .catch((e: unknown) => {
               console.error(`Could not fetch user ${user_id}`, e);
               return null;
-            }));
+            });
+        this.user_requests.set(user_id, request);
+      }
 
-      return this.user_requests.get(user_id);
+      return request;
     },
-    getBackgroundColor(type) {
+    getBackgroundColor(type: string): string {
       switch (type) {
         case 'friend-location':
           return '#5E35B1'
@@ -403,7 +437,7 @@ export default {
           return '#757575'
       }
     },
-    getNotificationsIcon(type) {
+    getNotificationsIcon(type: string | undefined): string {
       switch (type) {
         case 'invite':
         case 'requestInvite':
@@ -415,7 +449,7 @@ export default {
           return 'question'
       }
     },
-    getNotificationColor(type) {
+    getNotificationColor(type: string | undefined): string {
       switch (type) {
         case 'invite':
           return 'blue-lighten-2'
@@ -429,14 +463,14 @@ export default {
           return 'grey'
       }
     },
-    updateShowChanges(event) {
+    updateShowChanges(event: DisplayEvent): void {
       if (this.show_changes_items !== event.uid)
         this.show_changes_items = event.uid;
       else
         this.show_changes_items = null;
     }
   }
-}
+})
 </script>
 
 <style scoped>

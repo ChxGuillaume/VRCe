@@ -1,16 +1,16 @@
 import {readFileSync} from 'node:fs';
 import {fileURLToPath, URL} from 'node:url';
-import {defineConfig} from 'vite';
+import {defineConfig, type Plugin} from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vuetify from 'vite-plugin-vuetify';
-import devReload from './build/dev-reload-plugin.js';
+import devReload from './build/dev-reload-plugin.ts';
 
-const root = (path) => fileURLToPath(new URL(path, import.meta.url));
+const root = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
 const DEV_RELOAD_PORT = Number(process.env.VRCE_DEV_RELOAD_PORT) || 35729;
 
 // Emits manifest.json into the build, stamped with the package.json version.
-function extensionManifest({devReloadPort}) {
+function extensionManifest({devReloadPort}: {devReloadPort: number | null}): Plugin {
     return {
         name: 'extension-manifest',
         buildStart() {
@@ -43,7 +43,7 @@ export default defineConfig(({mode}) => {
             vue(),
             vuetify({autoImport: true}),
             extensionManifest({devReloadPort}),
-            devReloadPort && devReload({port: devReloadPort})
+            devReloadPort ? devReload({port: devReloadPort}) : null
         ],
         define: {
             __DEV_RELOAD_PORT__: JSON.stringify(devReloadPort)
@@ -63,7 +63,7 @@ export default defineConfig(({mode}) => {
                 input: {
                     popup: root('./popup.html'),
                     index: root('./index.html'),
-                    background: root('./src/background/index.js')
+                    background: root('./src/background/index.ts')
                 },
                 output: {
                     // The service worker path is referenced by manifest.json, it must be stable.

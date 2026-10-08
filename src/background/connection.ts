@@ -1,4 +1,5 @@
-import {MessageType} from '../shared/messages';
+import {type EventsPortMessage, MessageType} from '../shared/messages';
+import type {PipelineEvent} from '../types/events';
 import {getCurrentUser, isCloudflareError, isUnauthorized, PIPELINE_URL} from '../shared/vrchat-api';
 import {addEvent, getRecentEvents} from './events-db';
 import {parseEventContent} from './event-content';
@@ -10,32 +11,33 @@ const RECONNECT_DELAY_MS = 2000;
 // A service worker is stopped after 30s of inactivity, extension API calls reset that timer.
 const KEEPALIVE_INTERVAL_MS = 20 * 1000;
 
-const eventPorts = new Set();
+const eventPorts = new Set<chrome.runtime.Port>();
 
-let socket = null;
-let authToken = null;
+let socket: WebSocket | null = null;
+let authToken: string | null = null;
 // Token the pipeline answered with an error, don't hammer it until the cookie changes.
-let rejectedToken = null;
-let keepAliveTimer = null;
-let refreshQueue = Promise.resolve();
+let rejectedToken: string | null = null;
+let keepAliveTimer: ReturnType<typeof setInterval> | undefined;
+let refreshQueue: Promise<void> = Promise.resolve();
 
-export function broadcast(message) {
+export function broadcast(message: EventsPortMessage): void {
     eventPorts.forEach(port => port.postMessage(message));
 }
 
-export async function addEventsPort(port) {
+export async function addEventsPort(port: chrome.runtime.Port): Promise<void> {
     eventPorts.add(port);
     port.onDisconnect.addListener(() => eventPorts.delete(port));
 
     // Wait for a pending refresh so a freshly woken worker knows whether the user is logged in.
     await refreshQueue;
 
-    port.postMessage({type: MessageType.ALL_EVENTS, events: authToken ? await getRecentEvents() : []});
+    const message: EventsPortMessage = {type: MessageType.ALL_EVENTS, events: authToken ? await getRecentEvents() : []};
+    port.postMessage(message);
 }
 
 // Reads the VRChat auth cookie and (re)connects the pipeline socket when needed.
 // Calls are queued so concurrent triggers (cookie change, alarm, popup) never open two sockets.
-export function refreshConnection() {
+export function refreshConnection(): Promise<void> {
     refreshQueue = refreshQueue
         .then(syncWithAuthCookie)
         .catch(e => console.error('Failed to refresh VRChat connection', e));
@@ -43,11 +45,11 @@ export function refreshConnection() {
     return refreshQueue;
 }
 
-export function closeConnection() {
+export function closeConnection(): void {
     closeSocket();
 }
 
-async function syncWithAuthCookie() {
+async function syncWithAuthCookie(): Promise<void> {
     const cookie = await chrome.cookies.get({name: 'auth', url: VRCHAT_URL});
 
     if (!cookie) {
@@ -64,11 +66,11 @@ async function syncWithAuthCookie() {
     }
 }
 
-function isSocketAlive() {
-    return socket !== null && [WebSocket.CONNECTING, WebSocket.OPEN].includes(socket.readyState);
+function isSocketAlive(): boolean {
+    return socket !== null && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN);
 }
 
-function closeSocket() {
+function closeSocket(): void {
     if (!socket) return;
 
     const closing = socket;
@@ -77,7 +79,7 @@ function closeSocket() {
     closing.close(1000, KNOWN_CLOSE);
 }
 
-function createSocket(token) {
+function createSocket(token: string): void {
     closeSocket();
 
     const ws = new WebSocket(`${PIPELINE_URL}?authToken=${encodeURIComponent(token)}`);
@@ -109,18 +111,21 @@ function createSocket(token) {
     };
 }
 
-async function handleSocketMessage(ev, token) {
-    const event = JSON.parse(ev.data);
+async function handleSocketMessage(ev: MessageEvent<string>, token: string): Promise<void> {
+    const message = JSON.parse(ev.data) as {type: string; content?: unknown; err?: string};
 
-    if (event.err) {
+    if (message.err) {
         rejectedToken = token;
-        console.warn('Socket Error', event);
+        console.warn('Socket Error', message);
         return;
     }
 
-    event.uid = crypto.randomUUID();
-    event.date = new Date();
-    event.content = await parseEventContent(event.type, event.content);
+    const event: PipelineEvent = {
+        uid: crypto.randomUUID(),
+        type: message.type,
+        date: new Date(),
+        content: await parseEventContent(message.type, message.content)
+    };
 
     addEvent(event).catch(e => console.error('Could not store event', e));
     notifyForEvent(event).catch(e => console.error('Could not notify event', e));
@@ -128,7 +133,7 @@ async function handleSocketMessage(ev, token) {
     broadcast({type: MessageType.NEW_EVENTS, event});
 }
 
-async function checkSession() {
+async function checkSession(): Promise<void> {
     try {
         await getCurrentUser();
     } catch (e) {
@@ -138,9 +143,9 @@ async function checkSession() {
     }
 }
 
-async function setOnlineStatus(online) {
+async function setOnlineStatus(online: boolean): Promise<void> {
     // Survives service worker restarts, so the user is only notified when the status changes.
-    const {online: wasOnline} = await chrome.storage.session.get('online');
+    const {online: wasOnline} = await chrome.storage.session.get<{online?: boolean}>('online');
     await chrome.storage.session.set({online});
 
     const suffix = online ? '' : '-offline';
@@ -156,12 +161,12 @@ async function setOnlineStatus(online) {
     if (!online && wasOnline !== false) await notifyDisconnected();
 }
 
-function startKeepAlive() {
+function startKeepAlive(): void {
     stopKeepAlive();
     keepAliveTimer = setInterval(() => chrome.runtime.getPlatformInfo(), KEEPALIVE_INTERVAL_MS);
 }
 
-function stopKeepAlive() {
+function stopKeepAlive(): void {
     clearInterval(keepAliveTimer);
-    keepAliveTimer = null;
+    keepAliveTimer = undefined;
 }

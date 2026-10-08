@@ -49,25 +49,29 @@
   </v-card>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import {defineComponent, type PropType} from 'vue';
+import type {EventUser} from '../../../types/events';
+
+export default defineComponent({
   name: 'PreviousUserChanges',
   props: {
     user: {
-      type: Object,
+      type: Object as PropType<EventUser>,
       required: true
     },
     previous_user: {
-      type: Object,
+      type: Object as PropType<EventUser>,
       required: true
     },
+    // Previous value of each string field that changed.
     previous_user_changes: {
-      type: Object,
+      type: Object as PropType<Record<string, string>>,
       required: true
     }
   },
   methods: {
-    getStatusText(status) {
+    getStatusText(status: string | undefined): string | undefined {
       switch (status) {
         case 'join me':
           return 'Join Me';
@@ -83,7 +87,7 @@ export default {
           return status;
       }
     },
-    getStatusColor(status) {
+    getStatusColor(status: string | undefined): string {
       switch (status) {
         case 'join me':
           return '#42caff';
@@ -100,7 +104,7 @@ export default {
       }
     }
   }
-}
+})
 </script>
 
 <style scoped>

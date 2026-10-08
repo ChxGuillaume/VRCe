@@ -111,7 +111,7 @@
     <h1 v-if="!hasUserData && !fetching" class="mt-2 text-center">Logged Off</h1>
 
     <v-row
-        v-if="hasUserData"
+        v-if="hasUserData && user_data"
         style="margin-bottom: 56px;"
     >
       <v-col
@@ -119,7 +119,7 @@
       >
         <div
             class="d-inline-block rounded pa-1 mx-2"
-            :style="{ background: user_data.rank ? user_data.rank.color : '' }"
+            :style="{ background: userRank ? userRank.color : '' }"
         >
           <v-img
               :src="user_data.currentAvatarThumbnailImageUrl"
@@ -260,14 +260,14 @@
                 :friends="friends"
                 :worlds="worlds"
                 @user-details="fetchUserDetails(null, $event)"
-                @user-menu="openFriendMenu($event.$event, $event.friend)"
+                @user-menu="openFriendMenuById($event.$event, $event.friend.id)"
             />
           </v-window-item>
           <v-window-item value="events">
             <events-tab :friends="friends"/>
           </v-window-item>
           <v-window-item value="gallery" :disabled="!isUserVRCPlus">
-            <gallery-tab :user_data="user_data" @new-user-data="user_data = $event"/>
+            <gallery-tab :user_data="user_data" @new-user-data="updateUserIcon($event.userIcon)"/>
           </v-window-item>
           <v-window-item value="settings">
             <settings-tab/>
@@ -301,7 +301,7 @@
           <span>Back</span>
         </v-tooltip>
 
-        <v-card-text>
+        <v-card-text v-if="user_details">
           <v-row class="pt-2">
             <v-col cols="12" class="pb-0 d-flex justify-center align-center flex-column">
               <h2 class="mr-2 text-headline-small font-weight-bold d-inline-block">{{ user_details.displayName }}</h2>
@@ -540,8 +540,8 @@
     >
       <v-list class="pa-0">
         <v-list-item
-            :prepend-icon="friend_menu_item.favorited ? 'star_outline' : 'star'"
-            :title="friend_menu_item.favorited ? 'Unfavorite' : 'Favorite'"
+            :prepend-icon="friend_menu_item?.favorited ? 'star_outline' : 'star'"
+            :title="friend_menu_item?.favorited ? 'Unfavorite' : 'Favorite'"
             @click="toggleFavoriteFriend"
         />
       </v-list>
@@ -581,7 +581,8 @@
   </v-container>
 </template>
 
-<script>
+<script lang="ts">
+import {defineComponent} from 'vue';
 import dayjs from 'dayjs';
 import EventsTab from "./PopupTabs/EventsTab.vue";
 import SettingsTab from "./PopupTabs/SettingsTab.vue";
@@ -601,21 +602,143 @@ import {
   isUnauthorized,
   logout
 } from '../shared/vrchat-api';
+import type {Rank, StatusBadge} from '../types/view';
+import type {
+  DecoratableUser,
+  Decorated,
+  FriendGroup,
+  FriendView,
+  PopupUser,
+  PopupWorld,
+  UserDetailsView
+} from '../types/popup-friends';
 
-export default {
+const DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+const PRIVATE_WORLD_IMAGE = 'https://assets.vrchat.com/www/images/default_private_image.png';
+
+function computeRank(tags: string[] = []): Rank {
+  // Friend list entries always come with empty tags, they all end up as Visitor.
+  if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted'))
+    return {color: '#FF69B4', name: 'Legend', power: 0};
+  if (tags.includes('system_trust_legend') && tags.includes('system_trust_trusted'))
+    return {color: '#5D88BB', name: 'Veteran', power: 1};
+  if (tags.includes('system_trust_veteran') && tags.includes('system_trust_trusted'))
+    return {color: '#8143E6', name: 'Trusted', power: 2};
+  if (tags.includes('system_trust_trusted'))
+    return {color: '#FF7B42', name: 'Known', power: 3};
+  if (tags.includes('system_trust_known'))
+    return {color: '#2BCF5C', name: 'User', power: 4};
+  if (tags.includes('system_trust_basic'))
+    return {color: '#1778FF', name: 'New User', power: 5};
+
+  return {color: '#CCCCCC', name: 'Visitor', power: 6, light: true};
+}
+
+function computeStatus(user: DecoratableUser, location: string): StatusBadge {
+  if (!location)
+    return {color: '#ebd23b', name: 'Active', power: 1, light: true};
+  if (user.state === 'offline' || location === 'offline')
+    return {color: '#CCCCCC', name: 'Offline', power: 0, light: true};
+
+  switch (user.status) {
+    case 'join me':
+      return {color: '#42caff', name: 'Join Me', power: 5};
+    case 'active':
+      return {color: '#60ad5e', name: 'Online', power: 4};
+    case 'ask me':
+      return {color: '#e88134', name: 'Ask Me', power: 3};
+    case 'busy':
+      return {color: '#5b0b0b', name: 'Busy', power: 2};
+    case 'offline':
+      return {color: '#CCCCCC', name: 'Offline', power: 0, light: true};
+    default:
+      return {color: '#CCCCCC', name: user.status, power: -1, light: true};
+  }
+}
+
+function worldIcon(location: string): string {
+  if (!location || location === 'offline') return '';
+
+  return location === 'private' ? 'public_off' : 'public';
+}
+
+function lastPlatform(platform: string): string {
+  switch (platform) {
+    case 'standalonewindows':
+      return 'PC/VR';
+    case 'android':
+      return 'Quest';
+    default:
+      return platform;
+  }
+}
+
+function locationType(location: string): string {
+  if (!location || ['private', 'offline'].includes(location)) return location;
+
+  const instance = location.split(':')[1] ?? '';
+
+  if (instance.includes('~private'))
+    return 'invite/invite+';
+  if (instance.includes('~hidden'))
+    return 'friends+';
+  if (instance.includes('~friends'))
+    return 'friends';
+
+  return 'public';
+}
+
+function locationRegion(location: string): string | null {
+  if (!location || ['private', 'offline'].includes(location)) return null;
+
+  const instance = location.split(':')[1] ?? '';
+
+  if (instance.includes('~region(eu)'))
+    return 'eu';
+  if (instance.includes('~region(jp)'))
+    return 'jp';
+
+  return 'us';
+}
+
+interface PopupData {
+  toolbox: boolean;
+  fetching: boolean;
+  logged_in: boolean;
+  cloudflare_error: boolean;
+  need_login_form: boolean;
+  user_data: PopupUser | null;
+  friends: FriendView[];
+  favorite_friends: string[];
+  friend_search: string | null;
+  user_details: UserDetailsView | null;
+  worlds: PopupWorld[];
+  drawer: boolean;
+  drawer_width: number;
+  no_session_dialog: boolean;
+  bottom_navigator: string;
+  invite_sent: boolean;
+  closed_groups: number[];
+  friend_menu: boolean;
+  friend_menu_item: FriendView | null;
+  menu_pos: {x: number; y: number};
+}
+
+export default defineComponent({
   name: 'Popup',
   components: {FriendPicture, GalleryTab, WorldsTab, SettingsTab, EventsTab},
-  data() {
+  data(): PopupData {
     return {
       toolbox: false,
       fetching: true,
       logged_in: false,
       cloudflare_error: false,
-      user_data: {},
+      need_login_form: false,
+      user_data: null,
       friends: [],
       favorite_friends: [],
       friend_search: '',
-      user_details: {},
+      user_details: null,
       worlds: [],
       drawer: false,
       drawer_width: window.innerWidth,
@@ -624,7 +747,7 @@ export default {
       invite_sent: false,
       closed_groups: [0],
       friend_menu: false,
-      friend_menu_item: {},
+      friend_menu_item: null,
       menu_pos: {
         x: 0,
         y: 0
@@ -632,23 +755,20 @@ export default {
     }
   },
   watch: {
-    friend_search: {
-      handler(friend_search) {
-        if (friend_search)
-          this.closed_groups.splice(this.closed_groups.indexOf(0), 1)
-        else if (!this.closed_groups.includes(0))
-          this.closed_groups.push(0)
-      },
-      deep: true
+    friend_search(friend_search: string | null) {
+      if (friend_search)
+        this.closed_groups.splice(this.closed_groups.indexOf(0), 1)
+      else if (!this.closed_groups.includes(0))
+        this.closed_groups.push(0)
     }
   },
   computed: {
-    sortedFriends() {
+    sortedFriends(): FriendView[] {
+      const searchField = this.friend_search ? this.friend_search.toLowerCase() : '';
       const filteredFriends = this.friends.filter(e => {
         const displayName = e.displayName.toLowerCase();
         // Friend list entries don't carry the username anymore.
         const userName = (e.username || '').toLowerCase();
-        const searchField = this.friend_search ? this.friend_search.toLowerCase() : '';
 
         return displayName.includes(searchField) || userName.includes(searchField);
       });
@@ -661,8 +781,8 @@ export default {
         return result;
       });
     },
-    groupedSortedFriends() {
-      return Object.values(this.sortedFriends.reduce((acc, cur) => {
+    groupedSortedFriends(): FriendGroup[] {
+      const groups = this.sortedFriends.reduce<Record<number, FriendGroup>>((acc, cur) => {
         if (!acc[cur.status.power])
           acc[cur.status.power] = {
             power: cur.status.power,
@@ -674,15 +794,18 @@ export default {
         acc[cur.status.power].friends.push(cur);
 
         return acc;
-      }, {})).sort((a, b) => {
-        return b.power - a.power;
-      });
+      }, {});
+
+      return Object.values(groups).sort((a, b) => b.power - a.power);
     },
-    hasUserData() {
-      return !this.fetching && this.user_data.id;
+    hasUserData(): boolean {
+      return !this.fetching && !!this.user_data?.id;
     },
-    isUserVRCPlus() {
-      return this.hasUserData && this.user_data.tags.includes('system_supporter');
+    isUserVRCPlus(): boolean {
+      return this.hasUserData && !!this.user_data?.tags.includes('system_supporter');
+    },
+    userRank(): Rank | null {
+      return this.user_data ? computeRank(this.user_data.tags) : null;
     }
   },
   mounted() {
@@ -699,7 +822,7 @@ export default {
     window.removeEventListener('resize', this.updateDrawerWidth);
   },
   methods: {
-    fetchUser() {
+    fetchUser(): void {
       this.fetching = true;
 
       getCurrentUser()
@@ -719,273 +842,193 @@ export default {
           })
           .finally(() => this.fetching = false);
     },
-    fetchUserDetails(ev, friend_id) {
-      if (ev && ['I', 'SPAN'].includes(ev.target.nodeName))
+    fetchUserDetails(ev: Event | null, friend_id: string): void {
+      const target = ev?.target as HTMLElement | null | undefined;
+
+      if (target && ['I', 'SPAN'].includes(target.nodeName))
         return;
 
       this.drawer = true;
-      this.user_details = {};
+      this.user_details = null;
 
       getUserWithProfile(friend_id)
           .then(data => {
-            this.setUserData(data);
-            this.user_details = data;
+            this.user_details = this.decorateUser(data);
 
             if (data.worldId && !['offline'].includes(data.worldId))
               this.fetchWorld(data.worldId, true);
           })
           .catch(e => console.error(`Could not fetch user ${friend_id}`, e));
     },
-    fetchWorld(worldId, showDrawer = false) {
+    fetchWorld(worldId: string, showDrawer = false): void {
       if (worldId !== 'private') {
         getWorld(worldId)
             .then(data => {
-              data.created_at = dayjs(data.created_at).format('YYYY-MM-DD HH:mm:ss');
-              data.updated_at = dayjs(data.updated_at).format('YYYY-MM-DD HH:mm:ss');
+              const world: PopupWorld = {
+                ...data,
+                created_at: dayjs(data.created_at).format(DATE_FORMAT),
+                updated_at: dayjs(data.updated_at).format(DATE_FORMAT),
+                publicationDate: data.publicationDate !== 'none'
+                    ? dayjs(data.publicationDate).format(DATE_FORMAT)
+                    : data.publicationDate,
+                labsPublicationDate: data.labsPublicationDate !== 'none'
+                    ? dayjs(data.labsPublicationDate).format(DATE_FORMAT)
+                    : data.labsPublicationDate,
+                author_tags: data.tags.filter(e => e.includes('author_tag')).map(e => e.replace('author_tag_', ''))
+              };
 
-              data.publicationDate = data.publicationDate !== 'none'
-                  ? dayjs(data.publicationDate).format('YYYY-MM-DD HH:mm:ss')
-                  : data.publicationDate;
+              this.worlds.push(world);
 
-              data.labsPublicationDate = data.labsPublicationDate !== 'none'
-                  ? dayjs(data.labsPublicationDate).format('YYYY-MM-DD HH:mm:ss')
-                  : data.labsPublicationDate;
-
-              data.author_tags = data.tags.filter(e => e.includes('author_tag')).map(e => e.replace('author_tag_', '')) || [];
-
-              this.worlds.push(data);
-
-              this.user_details.world = data;
-              if (showDrawer) this.refreshDrawer();
+              // Only for the user currently shown, not for the friend list world prefetch.
+              if (showDrawer && this.user_details?.worldId === worldId) {
+                this.user_details.world = world;
+                this.refreshDrawer();
+              }
             })
             .catch(e => console.error(`Could not fetch world ${worldId}`, e));
-      } else {
+      } else if (this.user_details) {
         this.user_details.world = {
           name: 'Private World',
-          thumbnailImageUrl: 'https://assets.vrchat.com/www/images/default_private_image.png'
+          thumbnailImageUrl: PRIVATE_WORLD_IMAGE
         };
       }
     },
-    fetchFriends(offline = false, offset = 0) {
+    fetchFriends(offline = false, offset = 0): void {
       const count = 100;
 
       getFriends({offline, n: count, offset})
           .then(data => {
-            data.forEach(friend => this.setUserData(friend));
+            const friends = data.map(friend => this.decorateUser(friend));
 
-            data.forEach(friend => {
-              const splicedLocation = friend.location.split(':');
+            friends.forEach(friend => {
+              const worldId = friend.location.split(':')[0];
 
-              if (splicedLocation && splicedLocation[0].startsWith('wrld_'))
-                this.fetchWorld(splicedLocation[0]);
+              if (worldId.startsWith('wrld_'))
+                this.fetchWorld(worldId);
             });
 
-            this.friends = this.friends.concat(data.filter(e => !this.friends.find(s => e.id === s.id)));
+            this.friends = this.friends.concat(friends.filter(e => !this.friends.find(s => e.id === s.id)));
 
             if (data.length === count)
               this.fetchFriends(offline, offset + count);
-            else if (!offline && data.length !== count)
+            else if (!offline)
               this.fetchFriends(true, 0);
           })
           .catch(e => console.error('Could not fetch friends', e));
     },
-    sendInviteToInstance(location) {
+    sendInviteToInstance(location: string): void {
       inviteMyselfTo(location)
           .then(() => this.invite_sent = true)
           .catch(e => console.error(`Could not invite myself to ${location}`, e));
     },
-    logoutFromVRChat() {
+    logoutFromVRChat(): void {
       logout().catch(e => console.error('Could not log out', e)).then(() => {
         this.logged_in = false;
-        this.user_data = {};
+        this.user_data = null;
         this.friends = [];
         this.fetchUser();
 
         sendToBackground(MessageType.LOGOUT);
       })
     },
-    goToVRCLogin() {
+    goToVRCLogin(): void {
       chrome.tabs.create({url: `https://vrchat.com/home/login`});
     },
-    goToData() {
+    goToData(): void {
       chrome.tabs.create({url: chrome.runtime.getURL('index.html')});
     },
-    checkVRCCurrentSessionInVR() {
+    checkVRCCurrentSessionInVR(): void {
+      if (!this.user_data) return;
+
       getUser(this.user_data.id)
           .then(data => {
             if (data.location !== 'offline')
-              this.openVRCCurrentSessionInVR(data.location);
+              this.openVRCCurrentSessionInVR(data.location ?? null);
             else
               this.no_session_dialog = true;
           })
           .catch(e => console.error('Could not fetch the current session', e));
     },
-    confirmOpenVRCSession() {
+    confirmOpenVRCSession(): void {
       this.openVRCCurrentSessionInVR();
       this.no_session_dialog = false;
     },
-    openVRCCurrentSessionInVR(location = null) {
+    openVRCCurrentSessionInVR(location: string | null = null): void {
       const url = location ? `vrchat://launch?ref=vrchat.com&id=${location}` : `vrchat://launch?ref=vrchat.com`;
       chrome.tabs.create({url});
     },
-    setUserData(user) {
-      if (this.user_data.activeFriends?.includes(user.id))
-        user.location = '';
+    decorateUser<T extends DecoratableUser>(user: T): Decorated<T> {
+      // Friends active on the website have no location.
+      const location = this.user_data?.activeFriends?.includes(user.id) ? '' : (user.location ?? '');
 
-      this.setRank(user);
-      this.setStatus(user);
-      this.setBioLinks(user);
-      this.setLastLogin(user);
-      this.setWorldIcon(user);
-      this.setWorldLink(user);
-      this.setLastPlatform(user);
+      const decorations = {
+        rank: computeRank(user.tags),
+        status: computeStatus(user, location),
+        bioLinks: user.bioLinks ? user.bioLinks.filter(e => e) : [],
+        location,
+        last_login: user.last_login ? dayjs(user.last_login).format(DATE_FORMAT) : '',
+        last_platform: lastPlatform(user.last_platform),
+        world_icon: worldIcon(location),
+        world_link: location.startsWith('wrld') ? `vrchat://launch?ref=vrchat.com&id=${location}` : undefined,
+        favorited: this.favorite_friends.includes(user.id),
+        location_type: locationType(location),
+        location_region: locationRegion(location)
+      };
 
-      user.favorited = this.favorite_friends.includes(user.id);
-      user.location_type = this.getLocationType(user.location);
-      user.location_region = this.getLocationRegion(user.location);
+      return {...user, ...decorations} as Decorated<T>;
     },
-    setRank(user) {
-      // Friend list entries always come with empty tags, they all end up as Visitor.
-      const tags = user.tags || [];
-
-      if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF69B4', name: 'Legend', power: 0}
-      } else if (tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#5D88BB', name: 'Veteran', power: 1}
-      } else if (tags.includes('system_trust_veteran') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#8143E6', name: 'Trusted', power: 2}
-      } else if (tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF7B42', name: 'Known', power: 3}
-      } else if (tags.includes('system_trust_known')) {
-        user.rank = {color: '#2BCF5C', name: 'User', power: 4}
-      } else if (tags.includes('system_trust_basic')) {
-        user.rank = {color: '#1778FF', name: 'New User', power: 5}
-      } else {
-        user.rank = {color: '#CCCCCC', name: 'Visitor', power: 6, light: true}
-      }
+    formatNumber(number: number | undefined): string {
+      return number === undefined ? '' : Intl.NumberFormat('fr-FR').format(number);
     },
-    setStatus(user) {
-      if (!user.location)
-        user.status = {color: '#ebd23b', name: 'Active', power: 1, light: true};
-      else if (user.state === 'offline' || user.location === 'offline')
-        user.status = {color: '#CCCCCC', name: 'Offline', power: 0, light: true};
-      else
-        switch (user.status) {
-          case 'join me':
-            user.status = {color: '#42caff', name: 'Join Me', power: 5};
-            break;
-          case 'active':
-            user.status = {color: '#60ad5e', name: 'Online', power: 4};
-            break;
-          case 'ask me':
-            user.status = {color: '#e88134', name: 'Ask Me', power: 3};
-            break;
-          case 'busy':
-            user.status = {color: '#5b0b0b', name: 'Busy', power: 2};
-            break;
-          case 'offline':
-            user.status = {color: '#CCCCCC', name: 'Offline', power: 0, light: true};
-            break;
-          default:
-            user.status = {color: '#CCCCCC', name: user.status, power: -1, light: true};
-        }
-    },
-    setBioLinks(user) {
-      user.bioLinks = user.bioLinks ? user.bioLinks.filter(e => e) : [];
-    },
-    setLastLogin(user) {
-      user.last_login = dayjs(user.last_login).format('YYYY-MM-DD HH:mm:ss');
-    },
-    setWorldIcon(user) {
-      if (user.location && user.location !== 'offline') {
-        switch (user.location) {
-          case 'private':
-            user.world_icon = 'public_off';
-            break;
-          default:
-            user.world_icon = 'public';
-        }
-      } else user.world_icon = '';
-    },
-    setWorldLink(user) {
-      if (user.location.startsWith('wrld')) {
-        user.world_link = `vrchat://launch?ref=vrchat.com&id=${user.location}`;
-      }
-    },
-    setLastPlatform(user) {
-      switch (user.last_platform) {
-        case 'standalonewindows':
-          user.last_platform = 'PC/VR';
-          break;
-        case 'android':
-          user.last_platform = 'Quest';
-          break;
-      }
-    },
-    getLocationType(location) {
-      const splicedLocation = location.split(':');
-
-      if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1].includes('~private'))
-          return 'invite/invite+';
-        if (splicedLocation[1].includes('~hidden'))
-          return 'friends+';
-        else if (splicedLocation[1].includes('~friends'))
-          return 'friends';
-        else
-          return 'public';
-      } else return location;
-    },
-    getLocationRegion(location) {
-      const splicedLocation = location.split(':');
-
-      if (location && !['private', 'offline'].includes(location)) {
-        if (splicedLocation[1].includes('~region(eu)'))
-          return 'eu';
-        else if (splicedLocation[1].includes('~region(jp)'))
-          return 'jp';
-        else
-          return 'us';
-      } else return null;
-    },
-    formatNumber(number) {
-      return Intl.NumberFormat('fr-FR').format(parseInt(number))
-    },
-    refreshDrawer() {
+    refreshDrawer(): void {
       this.drawer = false;
 
       this.$nextTick(() => {
         this.drawer = true;
       });
     },
-    openFriendMenu(e, friend) {
+    openFriendMenu(e: MouseEvent | KeyboardEvent, friend: FriendView): void {
       this.friend_menu = false;
 
-      this.menu_pos.x = e.clientX;
-      this.menu_pos.y = e.clientY;
+      if (e instanceof MouseEvent) {
+        this.menu_pos.x = e.clientX;
+        this.menu_pos.y = e.clientY;
+      }
       this.friend_menu_item = friend;
 
       this.$nextTick(() => {
         this.friend_menu = true;
       });
     },
-    closedGroupsToggle(power) {
+    // The worlds tab only knows a subset of the friend, use the popup's own entry.
+    openFriendMenuById(e: MouseEvent | KeyboardEvent, friendId: string): void {
+      const friend = this.friends.find(friend => friend.id === friendId);
+
+      if (friend) this.openFriendMenu(e, friend);
+    },
+    closedGroupsToggle(power: number): void {
       if (this.closed_groups.includes(power))
         this.closed_groups.splice(this.closed_groups.indexOf(power), 1);
       else
         this.closed_groups.push(power);
     },
-    toggleFavoriteFriend() {
-      this.friend_menu_item.favorited = !this.friend_menu_item.favorited;
+    toggleFavoriteFriend(): void {
+      const friend = this.friend_menu_item;
+      if (!friend) return;
 
-      toggleFavoriteFriend(this.friend_menu_item.id)
+      friend.favorited = !friend.favorited;
+
+      toggleFavoriteFriend(friend.id)
           .then(favorite_friends => this.favorite_friends = favorite_friends);
     },
-    updateDrawerWidth() {
+    updateUserIcon(userIcon: string): void {
+      if (this.user_data) this.user_data = {...this.user_data, userIcon};
+    },
+    updateDrawerWidth(): void {
       this.drawer_width = window.innerWidth;
     }
   }
-}
+})
 </script>
 
 <style>

@@ -87,7 +87,7 @@
                 class="px-0"
                 :style="{ background: friend.status.color + '33' }"
                 @click="userDetails(friend.id)"
-                @click.right.prevent="userMenu($event, friend)"
+                @click.right.prevent="userMenu($event as MouseEvent, friend)"
             >
               <div class="d-flex align-center">
                 <friend-picture :friend="friend" />
@@ -122,36 +122,69 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import {defineComponent, type PropType} from 'vue';
 import FriendPicture from '../PopupComponents/FriendPicture.vue';
-import {getInstance, inviteMyselfTo} from '../../shared/vrchat-api';
+import {getInstance, inviteMyselfTo, type UserImageSource} from '../../shared/vrchat-api';
+import type {Instance} from '../../types/vrchat';
+import type {StatusBadge} from '../../types/view';
 
-export default {
+// Only the fields of the popup's friends the tab reads.
+interface WorldsFriend extends UserImageSource {
+  id: string;
+  displayName: string;
+  location: string;
+  status: StatusBadge;
+  favorited?: boolean;
+}
+
+// Only the fields of the popup's worlds the tab reads.
+interface WorldsWorld {
+  id: string;
+  name: string;
+  thumbnailImageUrl?: string;
+}
+
+interface WorldInstance {
+  location: string;
+  instance_data?: Instance;
+  instance_type?: string;
+  instance_region?: string;
+  instance_creator?: string;
+  world: Omit<WorldsWorld, 'id'>;
+  friends: WorldsFriend[];
+  show_friends: boolean;
+}
+
+export default defineComponent({
   name: 'WorldsTab',
-  emits: ['user-details', 'user-menu'],
+  emits: {
+    'user-details': (friendId: string) => !!friendId,
+    'user-menu': (payload: {$event: MouseEvent; friend: WorldsFriend}) => !!payload.friend
+  },
   components: {FriendPicture},
   props: {
     friends: {
-      type: Array,
+      type: Array as PropType<WorldsFriend[]>,
       required: true
     },
     worlds: {
-      type: Array,
+      type: Array as PropType<WorldsWorld[]>,
       required: true
     }
   },
   data() {
     return {
-      instances_data: [],
-      instances_data_fetched: [],
+      instances_data: [] as Instance[],
+      instances_data_fetched: [] as string[],
       // Friends list visibility toggled by the user, by instance location.
-      toggled_instances: {},
+      toggled_instances: {} as Record<string, boolean>,
       invite_sent: false
     }
   },
   computed: {
-    instances() {
-      const instances = [];
+    instances(): WorldInstance[] {
+      const instances: Record<string, WorldInstance> = {};
 
       this.friends
           .filter(e => !['', 'offline'].includes(e.location))
@@ -161,10 +194,10 @@ export default {
             const world = this.worlds.find(e => e.id === splicedLocation[0]);
 
             if (world) {
-              let instance_creator = friend.location.match(/(~hidden|~friends)\((.*?)\)/);
-              instance_creator = instance_creator ? instance_creator[2] : '';
+              const instance_creator = friend.location.match(/(~hidden|~friends)\((.*?)\)/)?.[2] ?? '';
+              const instance = instances[friend.location];
 
-              if (!instances[friend.location] && friend.location !== 'private') {
+              if (!instance && friend.location !== 'private') {
                 this.fetchInstance(friend.location);
 
                 instances[friend.location] = {
@@ -177,9 +210,11 @@ export default {
                   friends: [friend],
                   show_friends: true,
                 };
-              } else instances[friend.location].friends.push(friend);
+              } else instance?.friends.push(friend);
             } else {
-              if (!instances['private'])
+              const privateInstance = instances['private'];
+
+              if (!privateInstance)
                 instances['private'] = {
                   location: 'private',
                   world: {
@@ -190,14 +225,14 @@ export default {
                   show_friends: false,
                 };
               else
-                instances['private'].friends.push(friend);
+                privateInstance.friends.push(friend);
             }
           });
 
       const instances_values = Object.values(instances);
 
       if (instances_values.length === 1)
-        instances_values[0].show_friends = true;
+        instances_values[0]!.show_friends = true;
 
       const instances_array = instances_values.sort((a) => {
         return a.location === 'private' ? 1 : -1;
@@ -217,7 +252,7 @@ export default {
     }
   },
   methods: {
-    fetchInstance(location) {
+    fetchInstance(location: string): void {
       if (!this.instances_data_fetched.find(e => e === location)) {
         this.instances_data_fetched.push(location);
 
@@ -228,45 +263,45 @@ export default {
             .catch(e => console.error(`Could not fetch instance ${location}`, e));
       }
     },
-    sendInviteToInstance(instance) {
+    sendInviteToInstance(instance: WorldInstance): void {
       inviteMyselfTo(instance.location)
           .then(() => this.invite_sent = true)
           .catch(e => console.error(`Could not invite myself to ${instance.location}`, e));
     },
-    isShowingFriends(instance) {
+    isShowingFriends(instance: WorldInstance): boolean {
       return this.toggled_instances[instance.location] ?? instance.show_friends;
     },
-    changeShowFriendsState(instance) {
+    changeShowFriendsState(instance: WorldInstance): void {
       this.toggled_instances[instance.location] = !this.isShowingFriends(instance);
     },
-    getLocationRegion(location) {
-      const splicedLocation = location.split(':');
+    getLocationRegion(location: string): string {
+      const instanceId = location.split(':')[1] ?? '';
 
-      if (splicedLocation[1].includes('~region(eu)'))
+      if (instanceId.includes('~region(eu)'))
         return 'eu';
-      else if (splicedLocation[1].includes('~region(jp)'))
+      else if (instanceId.includes('~region(jp)'))
         return 'jp';
       else
         return 'us';
     },
-    getLocationType(location) {
-      const splicedLocation = location.split(':');
+    getLocationType(location: string): string {
+      const instanceId = location.split(':')[1] ?? '';
 
-      if (splicedLocation[1].includes('~hidden'))
+      if (instanceId.includes('~hidden'))
         return 'friends+';
-      else if (splicedLocation[1].includes('~friends'))
+      else if (instanceId.includes('~friends'))
         return 'friends';
       else
         return 'public';
     },
-    userDetails(friend_id) {
+    userDetails(friend_id: string): void {
       this.$emit('user-details', friend_id)
     },
-    userMenu($event, friend) {
+    userMenu($event: MouseEvent, friend: WorldsFriend): void {
       this.$emit('user-menu', {$event, friend})
     }
   }
-}
+})
 </script>
 
 <style scoped>

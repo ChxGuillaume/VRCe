@@ -1,24 +1,30 @@
-import {createServer} from 'node:http';
+import {createServer, type Server, type ServerResponse} from 'node:http';
 import {createHash} from 'node:crypto';
+import type {Plugin} from 'vite';
 
 const HOLD_REQUEST_MS = 20 * 1000;
 
 // Dev only: serves the current build id over long polling, so the extension can reload itself after a rebuild.
 // The service worker reloads the whole extension when its code (or the manifest) changed, otherwise only the pages.
-export default function devReload({port}) {
-    let server = null;
+interface PendingRequest {
+    res: ServerResponse;
+    timer: ReturnType<typeof setTimeout>;
+}
+
+export default function devReload({port}: {port: number}): Plugin {
+    let server: Server | null = null;
     let build = 0;
     let backgroundBuild = 0;
-    let backgroundHash = null;
-    const waiting = new Set();
+    let backgroundHash: string | null = null;
+    const waiting = new Set<PendingRequest>();
 
-    const flush = (pending) => {
+    const flush = (pending: PendingRequest) => {
         clearTimeout(pending.timer);
         waiting.delete(pending);
         reply(pending.res);
     };
 
-    const reply = (res) => {
+    const reply = (res: ServerResponse) => {
         res.writeHead(200, {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-store',
@@ -34,11 +40,11 @@ export default function devReload({port}) {
             if (server || !this.meta.watchMode) return;
 
             server = createServer((req, res) => {
-                const since = new URL(req.url, 'http://127.0.0.1').searchParams.get('since');
+                const since = new URL(req.url ?? '/', 'http://127.0.0.1').searchParams.get('since');
 
                 if (since === null || since === '' || Number(since) !== build) return reply(res);
 
-                const pending = {res, timer: setTimeout(() => flush(pending), HOLD_REQUEST_MS)};
+                const pending: PendingRequest = {res, timer: setTimeout(() => flush(pending), HOLD_REQUEST_MS)};
                 waiting.add(pending);
                 res.on('close', () => {
                     clearTimeout(pending.timer);
@@ -50,13 +56,13 @@ export default function devReload({port}) {
             server.on('error', (e) => console.warn(`\n[dev-reload] server error, auto reload disabled: ${e.message}`));
             server.listen(port, '127.0.0.1', () => console.log(`\n[dev-reload] listening on http://127.0.0.1:${port}`));
         },
-        writeBundle(options, bundle) {
+        writeBundle(_options, bundle) {
             if (!server) return;
 
             const hash = createHash('sha1');
-            const addChunk = (fileName, seen = new Set()) => {
+            const addChunk = (fileName: string, seen = new Set<string>()) => {
                 const chunk = bundle[fileName];
-                if (!chunk || seen.has(fileName)) return;
+                if (!chunk || chunk.type !== 'chunk' || seen.has(fileName)) return;
 
                 seen.add(fileName);
                 hash.update(chunk.code);
@@ -64,7 +70,8 @@ export default function devReload({port}) {
             };
 
             addChunk('background.js');
-            hash.update(String(bundle['manifest.json']?.source));
+            const manifest = bundle['manifest.json'];
+            hash.update(manifest?.type === 'asset' ? String(manifest.source) : '');
 
             const newHash = hash.digest('hex');
 

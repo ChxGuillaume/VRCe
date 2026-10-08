@@ -41,45 +41,6 @@
           </template>
         </v-img>
       </div>
-      <br>
-      <div
-          v-if="user_data.profilePicOverride"
-          class="d-inline-block rounded fullWidthTransition pa-1 ma-2"
-          :style="{
-            position: 'relative',
-            background: user_data.rank ? user_data.rank.color : '',
-            width: full_width ? '70%' : '374px'
-          }"
-      >
-        <v-img
-            :src="user_data.profilePicOverride"
-            class="mx-auto rounded"
-            width="100%"
-            min-height="210"
-            max-height="90vh"
-            style="cursor: pointer"
-            @click="full_width = !full_width"
-        >
-          <template v-slot:placeholder>
-            <v-row class="fill-height ma-0 align-center justify-center">
-              <v-progress-circular
-                  indeterminate
-                  color="grey-lighten-5"
-              />
-            </v-row>
-          </template>
-        </v-img>
-        <v-btn
-            icon
-            size="small"
-            variant="text"
-            position="absolute"
-            style="top: 10px; right: 10px"
-            @click="full_width = !full_width"
-        >
-          <v-icon>{{ !full_width ? 'open_in_full' : 'close_fullscreen' }}</v-icon>
-        </v-btn>
-      </div>
     </v-col>
     <v-col v-if="user_data.id" cols="12" class="text-center">
       <h1>{{ user_data.displayName }} <span class="text-body-small">{{ user_data.username }}</span></h1>
@@ -143,8 +104,8 @@
     <v-col cols="4" class="px-16">
       <h2>Display Name History:</h2>
       <ul>
-        <li v-for="displayName of user_data.pastDisplayNames" :key="displayName">
-          {{ displayName }}
+        <li v-for="pastName of user_data.pastDisplayNames" :key="pastName.updated_at + pastName.displayName">
+          {{ pastName.displayName }}
         </li>
       </ul>
       <span v-if="user_data.pastDisplayNames && !user_data.pastDisplayNames.length">
@@ -172,25 +133,19 @@
   </v-row>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import {defineComponent, type PropType} from 'vue';
+import type {CurrentUserRow} from '../../types/standalone-users';
+
+export default defineComponent({
   name: 'PersonalInfosTab',
   props: {
     user_data: {
-      type: Object,
+      type: Object as PropType<CurrentUserRow>,
       required: true
     }
-  },
-  data() {
-    return {
-      full_width: false
-    }
   }
-}
+})
 </script>
 
-<style scoped>
-.fullWidthTransition {
-  transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-</style>
+

@@ -1,4 +1,4 @@
-import {EVENTS_PORT, MessageType} from '../shared/messages';
+import {type BackgroundMessage, type BackgroundResponse, EVENTS_PORT, MessageType} from '../shared/messages';
 import {clearEvents, pruneOldEvents} from './events-db';
 import {addEventsPort, broadcast, closeConnection, refreshConnection} from './connection';
 import {LOGIN_NOTIFICATION_ID} from './notifications';
@@ -13,7 +13,7 @@ chrome.runtime.onConnect.addListener((port) => {
     if (port.name === EVENTS_PORT) addEventsPort(port);
 });
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: BackgroundMessage, _sender, sendResponse: (response: BackgroundResponse) => void) => {
     handleMessage(message).then(
         () => sendResponse({ok: true}),
         (e) => {
@@ -43,7 +43,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     pruneOldEvents();
 });
 
-async function handleMessage(message) {
+async function handleMessage(message: BackgroundMessage): Promise<void> {
     switch (message.type) {
         case MessageType.REFRESH_CONNECTION:
             await refreshConnection();
@@ -60,7 +60,7 @@ async function handleMessage(message) {
     }
 }
 
-async function ensureHeartbeat() {
+async function ensureHeartbeat(): Promise<void> {
     if (!await chrome.alarms.get(HEARTBEAT_ALARM))
         await chrome.alarms.create(HEARTBEAT_ALARM, {periodInMinutes: 0.5});
 }

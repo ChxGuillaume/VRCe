@@ -126,27 +126,42 @@
   </v-card>
 </template>
 
-<script>
+<script lang="ts">
+import {defineComponent, type PropType} from 'vue';
 import {deleteFile, getFiles, getProfile, updateProfile} from '../../shared/vrchat-api';
+import type {VRChatFile} from '../../types/vrchat';
 
-const fileId = (url) => url?.match(/(file_[^/]+)/)?.[1];
+// Only the fields of the popup's current user the tab reads.
+interface GalleryUser {
+  id: string;
+}
+
+type GalleryFile = VRChatFile & {url: string};
+
+type GalleryIcon = GalleryFile & {current: boolean};
+
+const fileId = (url: string | undefined) => url?.match(/(file_[^/]+)/)?.[1];
 
 // Image of the latest version of a file.
-const fileUrl = (file) => `https://api.vrchat.cloud/api/1/file/${file.id}/${file.versions?.at(-1)?.version ?? 1}`;
+const fileUrl = (file: VRChatFile) => `https://api.vrchat.cloud/api/1/file/${file.id}/${file.versions?.at(-1)?.version ?? 1}`;
 
-export default {
+const withUrl = (file: VRChatFile): GalleryFile => ({...file, url: fileUrl(file)});
+
+export default defineComponent({
   name: 'GalleryTab',
-  emits: ['new-user-data'],
+  emits: {
+    'new-user-data': (user: GalleryUser & {userIcon: string}) => !!user.id
+  },
   props: {
     user_data: {
-      type: Object,
+      type: Object as PropType<GalleryUser>,
       required: true
     }
   },
   data() {
     return {
-      icons: [],
-      pictures: [],
+      icons: [] as GalleryFile[],
+      pictures: [] as GalleryFile[],
       // The current user no longer carries its icon, it comes from its profile.
       current_icon: '',
       show_icons: true,
@@ -155,12 +170,12 @@ export default {
     }
   },
   computed: {
-    Icons() {
+    Icons(): GalleryIcon[] {
       const currentIconId = fileId(this.current_icon);
 
       return this.icons.map(icon => ({...icon, current: !!currentIconId && fileId(icon.url) === currentIconId}));
     },
-    Pictures() {
+    Pictures(): GalleryFile[] {
       return this.pictures;
     }
   },
@@ -170,25 +185,27 @@ export default {
     this.fetchPictures();
   },
   methods: {
-    fetchCurrentIcon() {
+    fetchCurrentIcon(): void {
       getProfile(this.user_data.id)
           .then(profile => this.current_icon = profile.userIcon || '')
           .catch(e => console.error('Could not fetch the current icon', e));
     },
-    fetchIcons() {
+    fetchIcons(): void {
       getFiles('icon')
-          .then(data => this.icons = data.map(file => ({...file, url: fileUrl(file)})))
+          .then(data => this.icons = data.map(withUrl))
           .catch(e => console.error('Could not fetch icons', e));
     },
-    fetchPictures() {
+    fetchPictures(): void {
       getFiles('gallery')
-          .then(data => this.pictures = data.map(file => ({...file, url: fileUrl(file)})))
+          .then(data => this.pictures = data.map(withUrl))
           .catch(e => console.error('Could not fetch gallery pictures', e));
     },
-    changeIcon(ev, url) {
-      if (ev.target.classList.contains('v-icon')
-          || ev.target.classList.contains('v-btn')
-          || ev.target.classList.contains('v-btn__content'))
+    changeIcon(ev: MouseEvent, url: string): void {
+      const target = ev.target as Element;
+
+      if (target.classList.contains('v-icon')
+          || target.classList.contains('v-btn')
+          || target.classList.contains('v-btn__content'))
         return;
 
       // Icons are profile fields now, the response is the public profile, not the user.
@@ -199,7 +216,7 @@ export default {
           })
           .catch(e => console.error('Could not change the icon', e));
     },
-    deleteFile() {
+    deleteFile(): void {
       const fileId = this.delete_file_id;
 
       deleteFile(fileId)
@@ -212,7 +229,7 @@ export default {
       this.delete_file_id = '';
     }
   }
-}
+})
 </script>
 
 <style scoped>

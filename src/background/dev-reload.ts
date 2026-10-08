@@ -1,13 +1,18 @@
-import {MessageType} from '../shared/messages';
+import {type BackgroundMessage, MessageType} from '../shared/messages';
 
 const RETRY_DELAY_MS = 2000;
 
 // Dev only (`npm run serve`): long polls the watch build and reloads the extension after each rebuild.
 // A background change needs a full extension reload, a UI only change just reloads the open pages.
-export async function startDevReload() {
+interface BuildStatus {
+    build: number;
+    backgroundBuild: number;
+}
+
+export async function startDevReload(): Promise<void> {
     if (!__DEV_RELOAD_PORT__) return;
 
-    let {devBuild: since} = await chrome.storage.session.get('devBuild');
+    let {devBuild: since} = await chrome.storage.session.get<{devBuild?: number}>('devBuild');
 
     for (;;) {
         // Extension API calls keep the dev service worker alive while it waits.
@@ -15,7 +20,7 @@ export async function startDevReload() {
 
         try {
             const response = await fetch(`http://127.0.0.1:${__DEV_RELOAD_PORT__}/?since=${since ?? ''}`);
-            const {build, backgroundBuild} = await response.json();
+            const {build, backgroundBuild} = await response.json() as BuildStatus;
             const previous = since;
 
             since = build;
@@ -31,7 +36,7 @@ export async function startDevReload() {
             }
 
             console.log('[dev-reload] UI changed, reloading pages');
-            chrome.runtime.sendMessage({type: MessageType.DEV_RELOAD}).catch(() => {});
+            chrome.runtime.sendMessage<BackgroundMessage>({type: MessageType.DEV_RELOAD}).catch(() => {});
         } catch {
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
         }

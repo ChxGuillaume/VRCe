@@ -1,6 +1,6 @@
 <template>
   <v-container fluid class="pa-0">
-    <v-tooltip v-if="user_data.id" location="right">
+    <v-tooltip v-if="user_data" location="right">
       <template v-slot:activator="{ props }">
         <v-scale-transition origin="center">
           <v-btn
@@ -22,7 +22,8 @@
       <span>Disconnect From VRChat Home</span>
     </v-tooltip>
 
-    <template v-if="user_data.id">
+    <template v-if="user_data">
+
       <v-tabs v-model="tab" class="mt-16" align-tabs="center" bg-color="transparent" slider-color="transparent">
         <v-tab value="friends">
           <v-icon start>
@@ -255,7 +256,7 @@
           <player-moderation-tab :logged_in="!!user_data"/>
         </v-window-item>
         <v-window-item value="personal" class="pt-3">
-          <personal-infos-tab :user_data="user_data"/>
+          <personal-infos-tab v-if="user_data" :user_data="user_data"/>
         </v-window-item>
       </v-window>
     </template>
@@ -326,8 +327,9 @@
   </v-container>
 </template>
 
-<script>
-import dayjs from 'dayjs';
+<script lang="ts">
+import {defineComponent} from 'vue';
+import type {DataTableHeader} from 'vuetify';
 import {
   getCurrentUser,
   getUserWithProfile,
@@ -337,17 +339,45 @@ import {
   logout,
   withProfile
 } from '../shared/vrchat-api';
+import {type CurrentUserRow, toUserRow, type UserRow} from '../types/standalone-users';
+import type {Rank} from '../types/view';
+import type {World} from '../types/vrchat';
 import PlayerModerationTab from './StandaloneTabs/PlayerModerationTab.vue';
 import PersonalInfosTab from './StandaloneTabs/PersonalInfosTab.vue';
 import earlyAdopterBadge from '../assets/early_adopter.png';
 import supporterBadge from '../assets/supporter.png';
 
-export default {
+type FriendsHeader = DataTableHeader<UserRow> & {title: string};
+
+interface RankStat extends Rank {
+  count: number;
+}
+
+interface StandaloneData {
+  user_data: CurrentUserRow | null;
+  friends: UserRow[];
+  // Friends still being fetched.
+  friends_pending: number;
+  friends_search: string;
+  friends_headers: FriendsHeader[];
+  friends_shown_headers: string[];
+  worlds: Record<string, World>;
+  need_login_form: boolean;
+  need_visit_vrc_home_form: boolean;
+  scroll_top: number;
+  tab: string;
+  itemsPerPageOptions: {value: number; title: string}[];
+  earlyAdopterBadge: string;
+  supporterBadge: string;
+}
+
+export default defineComponent({
   name: 'Standalone',
   components: {PersonalInfosTab, PlayerModerationTab},
-  data: () => ({
-    user_data: {},
+  data: (): StandaloneData => ({
+    user_data: null,
     friends: [],
+    friends_pending: 0,
     friends_search: '',
     friends_headers: [
       {title: 'World', align: 'start', key: 'worldId', sortable: false},
@@ -386,38 +416,35 @@ export default {
     supporterBadge
   }),
   computed: {
-    ranksStats() {
-      const data = {}
+    ranksStats(): RankStat[] {
+      const stats = new Map<number, RankStat>();
 
-      this.friends.forEach((user) => {
-        if (!data[user.rank.power]) {
-          data[user.rank.power] = Object.assign({count: 1}, user.rank)
-        } else {
-          data[user.rank.power].count++
-        }
-      })
+      this.friends.forEach(({rank}) => {
+        const stat = stats.get(rank.power);
 
-      return Object.values(data).reverse()
+        if (stat) stat.count++;
+        else stats.set(rank.power, {...rank, count: 1});
+      });
+
+      return [...stats.values()].sort((a, b) => b.power - a.power);
     },
-    icon() {
-      if (this.friendsHeadersShowAll) return 'highlight_off'
-      if (this.friends_shown_headers.length) return 'add_circle_outline'
-      return 'add_circle_outline'
+    icon(): string {
+      return this.friendsHeadersShowAll ? 'highlight_off' : 'add_circle_outline';
     },
-    friendsHeadersShowAll() {
+    friendsHeadersShowAll(): boolean {
       return this.friends_headers.length === this.friends_shown_headers.length
     },
-    friendsHeadersSelectItems() {
+    friendsHeadersSelectItems(): string[] {
       return this.friends_headers.map(e => e.title)
     },
-    friendsHeaders() {
+    friendsHeaders(): FriendsHeader[] {
       return this.friends_headers.filter(e => this.friends_shown_headers.includes(e.title))
     },
-    isLoading() {
-      return !this.user_data.id || this.friends.length < this.user_data.friends.length;
+    isLoading(): boolean {
+      return !this.user_data || this.friends_pending > 0;
     },
-    hideFab() {
-      return (this.scroll_top) > 150
+    hideFab(): boolean {
+      return this.scroll_top > 150
     }
   },
   mounted() {
@@ -433,17 +460,17 @@ export default {
     document.removeEventListener('scroll', this.onScroll);
   },
   methods: {
-    fetchUser() {
+    fetchUser(): void {
       this.need_login_form = false;
       this.need_visit_vrc_home_form = false;
 
       getCurrentUser()
           .then(withProfile)
           .then(data => {
-            this.setUserData(data);
-            this.user_data = data;
+            const user = toUserRow(data);
+            this.user_data = user;
 
-            this.fetchFriends();
+            this.fetchFriends(user.friends || []);
           })
           .catch(e => {
             if (isCloudflareError(e))
@@ -454,108 +481,30 @@ export default {
               console.error('Could not fetch the current user', e);
           });
     },
-    fetchFriends() {
+    fetchFriends(friendIds: string[]): void {
       this.friends = [];
-      for (const friend of this.user_data.friends || []) {
-        getUserWithProfile(friend)
+      this.friends_pending = friendIds.length;
+
+      for (const friendId of friendIds) {
+        getUserWithProfile(friendId)
             .then(data => {
-              this.setUserData(data);
-              this.friends.push(data);
+              this.friends.push(toUserRow(data));
 
               if (data.worldId && !['private', 'offline'].includes(data.worldId))
                 this.fetchWorld(data.worldId);
             })
-            .catch(e => console.warn(`Could not fetch friend ${friend}`, e));
+            .catch(e => console.warn(`Could not fetch friend ${friendId}`, e))
+            .finally(() => this.friends_pending--);
       }
     },
-    fetchWorld(worldId) {
+    fetchWorld(worldId: string): void {
       getWorld(worldId)
           .then(data => {
             this.worlds[worldId] = data;
           })
           .catch(e => console.warn(`Could not fetch world ${worldId}`, e));
     },
-    setUserData(user) {
-      this.setRank(user);
-      this.setState(user);
-      this.setStatus(user);
-      this.setBioLinks(user);
-      this.setLanguages(user);
-      this.setLastLogin(user);
-      this.setLastPlatform(user);
-    },
-    setRank(user) {
-      const tags = user.tags
-
-      if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF69B4', name: 'Legend', power: 0}
-      } else if (tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#5D88BB', name: 'Veteran', power: 1}
-      } else if (tags.includes('system_trust_veteran') && tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#8143E6', name: 'Trusted', power: 2}
-      } else if (tags.includes('system_trust_trusted')) {
-        user.rank = {color: '#FF7B42', name: 'Known', power: 3}
-      } else if (tags.includes('system_trust_known')) {
-        user.rank = {color: '#2BCF5C', name: 'User', power: 4}
-      } else if (tags.includes('system_trust_basic')) {
-        user.rank = {color: '#1778FF', name: 'New User', power: 5}
-      } else {
-        user.rank = {color: '#CCCCCC', name: 'Visitor', power: 6}
-      }
-    },
-    setState(user) {
-      switch (user.state) {
-        case 'online':
-          user.state = {color: '#60ad5e', name: 'Online', power: 0};
-          break;
-        case 'active':
-          user.state = {color: '#ebd23b', name: 'Active', power: 1};
-          break;
-        case 'offline':
-          user.state = {color: '#dddddd', name: 'Offline', power: 2, light: true};
-          break;
-        default:
-          user.state = {color: '#CCCCCC', name: user.state, power: 3, light: true};
-      }
-    },
-    setStatus(user) {
-      switch (user.status) {
-        case 'join me':
-          user.status = {color: '#42caff', name: 'Join Me', power: 4};
-          break;
-        case 'active':
-          user.status = {color: '#60ad5e', name: 'Active', power: 3};
-          break;
-        case 'ask me':
-          user.status = {color: '#e88134', name: 'Ask Me', power: 2};
-          break;
-        case 'busy':
-          user.status = {color: '#5b0b0b', name: 'Busy', power: 1};
-          break;
-        default:
-          user.status = {color: '#CCCCCC', name: user.status, power: 0};
-      }
-    },
-    setBioLinks(user) {
-      user.bioLinks = (user.bioLinks || []).filter(e => e);
-    },
-    setLanguages(user) {
-      user.languages = (user.tags || []).filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
-    },
-    setLastLogin(user) {
-      user.last_login = dayjs(user.last_login).format('YYYY-MM-DD HH:mm:ss');
-    },
-    setLastPlatform(user) {
-      switch (user.last_platform) {
-        case 'standalonewindows':
-          user.last_platform = 'PC/VR';
-          break;
-        case 'android':
-          user.last_platform = 'Quest';
-          break;
-      }
-    },
-    toggleFriendsShownHeaders() {
+    toggleFriendsShownHeaders(): void {
       this.$nextTick(() => {
         if (this.friendsHeadersShowAll) {
           this.friends_shown_headers = []
@@ -564,16 +513,16 @@ export default {
         }
       })
     },
-    logoutFromVRChat() {
+    logoutFromVRChat(): void {
       logout().catch(e => console.warn('Logout failed', e)).then(() => {
-        this.user_data = {};
+        this.user_data = null;
         this.friends = [];
         this.fetchUser();
       })
     },
-    onScroll() {
+    onScroll(): void {
       this.scroll_top = document.documentElement.scrollTop || document.body.scrollTop
     }
   }
-}
+})
 </script>
