@@ -1,14 +1,18 @@
 <template>
   <v-container fluid class="pa-0">
-    <v-tooltip v-if="user_data.id" right>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip v-if="user_data.id" location="right">
+      <template v-slot:activator="{ props }">
         <v-scale-transition origin="center">
           <v-btn
               v-if="!hideFab"
-              fixed top left fab
+              v-bind="props"
+              icon
+              size="large"
               color="red"
-              v-bind="attrs"
-              v-on="on"
+              position="fixed"
+              location="top left"
+              class="ma-4"
+              style="z-index: 5"
               @click="logoutFromVRChat"
           >
             <v-icon>logout</v-icon>
@@ -18,310 +22,293 @@
       <span>Disconnect From VRChat Home</span>
     </v-tooltip>
 
-    <v-tabs v-if="user_data.id" class="mt-16" centered background-color="transparent" slider-color="transparent">
-      <v-tab>
-        <v-icon left>
-          people
-        </v-icon>
-        Friends
-      </v-tab>
-      <v-tab>
-        <v-icon left>
-          shield
-        </v-icon>
-        Moderation Actions
-      </v-tab>
-      <v-tab>
-        <v-icon left>
-          account_circle
-        </v-icon>
-        Personal Infos
-      </v-tab>
+    <template v-if="user_data.id">
+      <v-tabs v-model="tab" class="mt-16" align-tabs="center" bg-color="transparent" slider-color="transparent">
+        <v-tab value="friends">
+          <v-icon start>
+            people
+          </v-icon>
+          Friends
+        </v-tab>
+        <v-tab value="moderation">
+          <v-icon start>
+            shield
+          </v-icon>
+          Moderation Actions
+        </v-tab>
+        <v-tab value="personal">
+          <v-icon start>
+            account_circle
+          </v-icon>
+          Personal Infos
+        </v-tab>
+      </v-tabs>
 
-      <v-tab-item class="pt-3">
-        <v-row class="text-center" v-if="friends.length">
-          <v-col cols="12">
-            <v-chip
-                v-for="rank in ranksStats"
-                :key="rank.name"
-                class="mx-2"
-                :color="rank.color"
-                outlined
-            >
-              {{ rank.count }} {{ rank.name }}
-            </v-chip>
-          </v-col>
-          <v-col cols="12">
-            <v-card :loading="isLoading">
-              <v-card-title>
-                <v-select
-                    v-model="friends_shown_headers"
-                    :items="friendsHeadersSelectItems"
-                    label="Hide Columns"
-                    multiple
-                >
-                  <template v-slot:prepend-item>
-                    <v-list-item
-                        ripple
-                        @click="toggleFriendsShownHeaders"
-                    >
-                      <v-list-item-action>
-                        <v-icon :color="friends_shown_headers.length > 0 ? 'gray' : ''">
-                          {{ icon }}
-                        </v-icon>
-                      </v-list-item-action>
-                      <v-list-item-content>
+      <v-window v-model="tab">
+        <v-window-item value="friends" class="pt-3">
+          <v-row class="text-center" v-if="friends.length">
+            <v-col cols="12">
+              <v-chip
+                  v-for="rank in ranksStats"
+                  :key="rank.name"
+                  class="mx-2"
+                  :color="rank.color"
+                  variant="outlined"
+              >
+                {{ rank.count }} {{ rank.name }}
+              </v-chip>
+            </v-col>
+            <v-col cols="12">
+              <v-card :loading="isLoading">
+                <div class="d-flex align-center ga-4 pa-4">
+                  <v-select
+                      v-model="friends_shown_headers"
+                      :items="friendsHeadersSelectItems"
+                      label="Hide Columns"
+                      multiple
+                  >
+                    <template v-slot:prepend-item>
+                      <v-list-item
+                          ripple
+                          @click="toggleFriendsShownHeaders"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon :color="friends_shown_headers.length > 0 ? 'grey' : ''">
+                            {{ icon }}
+                          </v-icon>
+                        </template>
                         <v-list-item-title>
                           Select All
                         </v-list-item-title>
-                      </v-list-item-content>
-                    </v-list-item>
-                    <v-divider class="mt-2"></v-divider>
-                  </template>
-                  <template v-slot:selection="{ item, index }">
-                <span
-                    v-if="index === 0"
-                    class="grey--text text-caption"
-                >
-                  ({{ friends_shown_headers.length }} columns shown)
-                </span>
-                  </template>
-                </v-select>
-                <v-spacer/>
-                <div v-if="isLoading">
-                  <span>{{ friends.length }} / {{ user_data.friends.length}}</span>
+                      </v-list-item>
+                      <v-divider class="mt-2"></v-divider>
+                    </template>
+                    <template v-slot:selection="{ index }">
+                      <span
+                          v-if="index === 0"
+                          class="text-grey text-body-small"
+                      >
+                        ({{ friends_shown_headers.length }} columns shown)
+                      </span>
+                    </template>
+                  </v-select>
+                  <v-spacer/>
+                  <div v-if="isLoading">
+                    <span>{{ friends.length }} / {{ user_data.friends.length }}</span>
+                  </div>
+                  <v-spacer/>
+                  <v-text-field
+                      v-model="friends_search"
+                      label="Search"
+                  />
                 </div>
-                <v-spacer/>
-                <v-text-field
-                    v-model="friends_search"
-                    label="Search"
-                />
-              </v-card-title>
-              <v-data-table
-                  v-if="show_table"
-                  :items="friends"
-                  :headers="friendsHeaders"
-                  :items-per-page="25"
-                  :search="friends_search"
-                  :footer-props="{
-                'items-per-page-options': [10, 25, 50, 100, -1]
-              }"
-                  sort-by="state.power"
-                  height="73vh"
-              >
-                <template v-slot:item.worldId="{ item: { worldId } }">
-                  <v-img
-                      v-if="worlds[worldId]"
-                      class="rounded"
-                      :src="worlds[worldId].thumbnailImageUrl"
-                      width="200"
-                      min-height="150"
-                  >
-                    <template v-slot:placeholder>
-                      <v-row
-                          class="fill-height ma-0"
-                          align="center"
-                          justify="center"
-                      >
-                        <v-progress-circular
-                            indeterminate
-                            color="grey lighten-5"
-                        />
-                      </v-row>
-                    </template>
-                  </v-img>
-                  <v-img
-                      v-else-if="worldId === 'private'"
-                      class="rounded"
-                      src="https://assets.vrchat.com/www/images/default_private_image.png"
-                      width="200"
-                      min-height="150"
-                  >
-                    <template v-slot:placeholder>
-                      <v-row
-                          class="fill-height ma-0"
-                          align="center"
-                          justify="center"
-                      >
-                        <v-progress-circular
-                            indeterminate
-                            color="grey lighten-5"
-                        />
-                      </v-row>
-                    </template>
-                  </v-img>
-                </template>
-                <template v-slot:item.userIcon="{ item }">
-                  <v-img
-                      v-if="item.userIcon"
-                      :src="item.userIcon"
-                      class="rounded"
-                      width="150"
-                      min-height="150"
-                  >
-                    <template v-slot:placeholder>
-                      <v-row
-                          class="fill-height ma-0"
-                          align="center"
-                          justify="center"
-                      >
-                        <v-progress-circular
-                            indeterminate
-                            color="grey lighten-5"
-                        />
-                      </v-row>
-                    </template>
-                  </v-img>
-                </template>
-                <template v-slot:item.avatar="{ item }">
-                  <v-img
-                      :src="item.currentAvatarThumbnailImageUrl"
-                      class="rounded"
-                      width="200"
-                      min-height="150"
-                  >
-                    <template v-slot:placeholder>
-                      <v-row
-                          class="fill-height ma-0"
-                          align="center"
-                          justify="center"
-                      >
-                        <v-progress-circular
-                            indeterminate
-                            color="grey lighten-5"
-                        />
-                      </v-row>
-                    </template>
-                  </v-img>
-                </template>
-                <template v-slot:item.profilePicOverride="{ item }">
-                  <v-img
-                      v-if="item.profilePicOverride"
-                      :src="item.profilePicOverride"
-                      class="rounded"
-                      width="200"
-                      min-height="150"
-                  >
-                    <template v-slot:placeholder>
-                      <v-row
-                          class="fill-height ma-0"
-                          align="center"
-                          justify="center"
-                      >
-                        <v-progress-circular
-                            indeterminate
-                            color="grey lighten-5"
-                        />
-                      </v-row>
-                    </template>
-                  </v-img>
-                </template>
-                <template v-slot:item.badges="{ item }">
-                  <v-img
-                      v-if="item.tags.includes('system_early_adopter')"
-                      :src="require('../assets/early_adopter.png')"
-                      width="50"
-                      title="Early Adopter"
-                  />
-                  <v-img
-                      v-if="item.tags.includes('system_supporter')"
-                      :src="require('../assets/supporter.png')"
-                      width="50"
-                      title="Supporter"
-                  />
-                </template>
-                <template v-slot:item.state.power="{ item: { state } }">
-                  <v-chip :color="state.color" :light="state.light">
-                    {{ state.name }}
-                  </v-chip>
-                </template>
-                <template v-slot:item.status.power="{ item: { status } }">
-                  <v-chip :color="status.color">
-                    {{ status.name }}
-                  </v-chip>
-                </template>
-                <template v-slot:item.rank.power="{ item: { rank } }">
-                  <v-chip :color="rank.color">
-                    {{ rank.name }}
-                  </v-chip>
-                </template>
-                <template v-slot:item.languages="{ item: { languages } }">
-                  {{ languages.join(', ') }}
-                </template>
-                <template v-slot:item.tags="{ item }">
-                  <v-chip
-                      v-for="tag in item.tags"
-                      :key="tag"
-                      class="my-1"
-                      small
-                  >
-                    {{ tag }}
-                  </v-chip>
-                </template>
-                <template v-slot:item.bioLinks="{ item }">
-                  <v-chip
-                      v-for="link in item.bioLinks"
-                      :key="link"
-                      :href="link"
-                      target="_blank"
-                      class="my-1"
-                      color="primary"
-                      small
-                  >
-                    {{ link }}
-                  </v-chip>
-                </template>
-                <template v-slot:item.date_joined="{ item: { date_joined } }">
-                  <pre>{{ date_joined }}</pre>
-                </template>
-                <template v-slot:item.last_login="{ item: { last_login } }">
-                  <pre>{{ last_login }}</pre>
-                </template>
-              </v-data-table>
-            </v-card>
-          </v-col>
-        </v-row>
-      </v-tab-item>
-      <v-tab-item>
-        <player-moderation-tab :logged_in="!!user_data"/>
-      </v-tab-item>
-      <v-tab-item class="pt-3">
-        <personal-infos-tab :user_data="user_data"/>
-      </v-tab-item>
-    </v-tabs>
+                <v-data-table
+                    :items="friends"
+                    :headers="friendsHeaders"
+                    :items-per-page="25"
+                    :items-per-page-options="itemsPerPageOptions"
+                    :search="friends_search"
+                    :sort-by="[{key: 'state.power', order: 'asc'}]"
+                    height="73vh"
+                >
+                  <template v-slot:item.worldId="{ item: { worldId } }">
+                    <v-img
+                        v-if="worlds[worldId]"
+                        class="rounded"
+                        :src="worlds[worldId].thumbnailImageUrl"
+                        width="200"
+                        min-height="150"
+                        cover
+                    >
+                      <template v-slot:placeholder>
+                        <v-row class="fill-height ma-0 align-center justify-center">
+                          <v-progress-circular
+                              indeterminate
+                              color="grey-lighten-5"
+                          />
+                        </v-row>
+                      </template>
+                    </v-img>
+                    <v-img
+                        v-else-if="worldId === 'private'"
+                        class="rounded"
+                        src="https://assets.vrchat.com/www/images/default_private_image.png"
+                        width="200"
+                        min-height="150"
+                        cover
+                    >
+                      <template v-slot:placeholder>
+                        <v-row class="fill-height ma-0 align-center justify-center">
+                          <v-progress-circular
+                              indeterminate
+                              color="grey-lighten-5"
+                          />
+                        </v-row>
+                      </template>
+                    </v-img>
+                  </template>
+                  <template v-slot:item.userIcon="{ item }">
+                    <v-img
+                        v-if="item.userIcon"
+                        :src="item.userIcon"
+                        class="rounded"
+                        width="150"
+                        min-height="150"
+                        cover
+                    >
+                      <template v-slot:placeholder>
+                        <v-row class="fill-height ma-0 align-center justify-center">
+                          <v-progress-circular
+                              indeterminate
+                              color="grey-lighten-5"
+                          />
+                        </v-row>
+                      </template>
+                    </v-img>
+                  </template>
+                  <template v-slot:item.avatar="{ item }">
+                    <v-img
+                        :src="item.currentAvatarThumbnailImageUrl"
+                        class="rounded"
+                        width="200"
+                        min-height="150"
+                        cover
+                    >
+                      <template v-slot:placeholder>
+                        <v-row class="fill-height ma-0 align-center justify-center">
+                          <v-progress-circular
+                              indeterminate
+                              color="grey-lighten-5"
+                          />
+                        </v-row>
+                      </template>
+                    </v-img>
+                  </template>
+                  <template v-slot:item.profilePicOverride="{ item }">
+                    <v-img
+                        v-if="item.profilePicOverride"
+                        :src="item.profilePicOverride"
+                        class="rounded"
+                        width="200"
+                        min-height="150"
+                        cover
+                    >
+                      <template v-slot:placeholder>
+                        <v-row class="fill-height ma-0 align-center justify-center">
+                          <v-progress-circular
+                              indeterminate
+                              color="grey-lighten-5"
+                          />
+                        </v-row>
+                      </template>
+                    </v-img>
+                  </template>
+                  <template v-slot:item.badges="{ item }">
+                    <v-img
+                        v-if="item.tags.includes('system_early_adopter')"
+                        :src="earlyAdopterBadge"
+                        width="50"
+                        title="Early Adopter"
+                    />
+                    <v-img
+                        v-if="item.tags.includes('system_supporter')"
+                        :src="supporterBadge"
+                        width="50"
+                        title="Supporter"
+                    />
+                  </template>
+                  <template v-slot:item.state.power="{ item: { state } }">
+                    <v-chip :color="state.color" variant="flat">
+                      {{ state.name }}
+                    </v-chip>
+                  </template>
+                  <template v-slot:item.status.power="{ item: { status } }">
+                    <v-chip :color="status.color" variant="flat">
+                      {{ status.name }}
+                    </v-chip>
+                  </template>
+                  <template v-slot:item.rank.power="{ item: { rank } }">
+                    <v-chip :color="rank.color" variant="flat">
+                      {{ rank.name }}
+                    </v-chip>
+                  </template>
+                  <template v-slot:item.languages="{ item: { languages } }">
+                    {{ languages.join(', ') }}
+                  </template>
+                  <template v-slot:item.tags="{ item }">
+                    <v-chip
+                        v-for="tag in item.tags"
+                        :key="tag"
+                        class="my-1"
+                        size="small"
+                    >
+                      {{ tag }}
+                    </v-chip>
+                  </template>
+                  <template v-slot:item.bioLinks="{ item }">
+                    <v-chip
+                        v-for="link in item.bioLinks"
+                        :key="link"
+                        :href="link"
+                        target="_blank"
+                        class="my-1"
+                        color="primary"
+                        variant="flat"
+                        size="small"
+                    >
+                      {{ link }}
+                    </v-chip>
+                  </template>
+                  <template v-slot:item.date_joined="{ item: { date_joined } }">
+                    <pre>{{ date_joined }}</pre>
+                  </template>
+                  <template v-slot:item.last_login="{ item: { last_login } }">
+                    <pre>{{ last_login }}</pre>
+                  </template>
+                </v-data-table>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-window-item>
+        <v-window-item value="moderation">
+          <player-moderation-tab :logged_in="!!user_data"/>
+        </v-window-item>
+        <v-window-item value="personal" class="pt-3">
+          <personal-infos-tab :user_data="user_data"/>
+        </v-window-item>
+      </v-window>
+    </template>
     <v-dialog
         v-model="need_login_form"
         transition="dialog-bottom-transition"
         max-width="600"
         persistent
     >
-      <template v-slot:default>
-        <v-card>
-          <v-card-title class="text-h5 red lighten-1">
-            Not Logged In
-          </v-card-title>
+      <v-card>
+        <v-card-title class="text-headline-small bg-red-lighten-1">
+          Not Logged In
+        </v-card-title>
 
-          <v-card-text class="pt-5 text-center">
-            You are actually disconnected from VRChat Home.
-            <br>
-            Please login here
-            <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home/login</a>
-            and then click the button below.
-          </v-card-text>
+        <v-card-text class="pt-5 text-center">
+          You are actually disconnected from VRChat Home.
+          <br>
+          Please login here
+          <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home/login</a>
+          and then click the button below.
+        </v-card-text>
 
-          <v-divider/>
+        <v-divider/>
 
-          <v-card-actions class="d-flex justify-center">
-            <v-btn
-                color="primary"
-                outlined
-                @click="fetchUser"
-            >
-              I'm now connected
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </template>
+        <v-card-actions class="d-flex justify-center">
+          <v-btn
+              color="primary"
+              variant="outlined"
+              @click="fetchUser"
+          >
+            I'm now connected
+          </v-btn>
+        </v-card-actions>
+      </v-card>
     </v-dialog>
     <v-dialog
         v-model="need_visit_vrc_home_form"
@@ -329,42 +316,41 @@
         max-width="600"
         persistent
     >
-      <template v-slot:default>
-        <v-card>
-          <v-card-title class="text-h5 orange lighten-1">
-            Cloudflare Error
-          </v-card-title>
+      <v-card>
+        <v-card-title class="text-headline-small bg-orange-lighten-1">
+          Cloudflare Error
+        </v-card-title>
 
-          <v-card-text class="pt-5 text-center">
-            Cloudflare need to check your browser.
-            <br>
-            Please check
-            <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home</a>
-            and then click the button below.
-          </v-card-text>
+        <v-card-text class="pt-5 text-center">
+          Cloudflare need to check your browser.
+          <br>
+          Please check
+          <a href="https://vrchat.com/home/login" target="_blank">https://vrchat.com/home</a>
+          and then click the button below.
+        </v-card-text>
 
-          <v-divider/>
+        <v-divider/>
 
-          <v-card-actions class="d-flex justify-center">
-            <v-btn
-                color="primary"
-                outlined
-                @click="fetchUser"
-            >
-              My browser is verified
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </template>
+        <v-card-actions class="d-flex justify-center">
+          <v-btn
+              color="primary"
+              variant="outlined"
+              @click="fetchUser"
+          >
+            My browser is verified
+          </v-btn>
+        </v-card-actions>
+      </v-card>
     </v-dialog>
   </v-container>
 </template>
 
 <script>
-import 'material-design-icons-iconfont/dist/material-design-icons.css'
-import * as moment from 'moment';
-import PlayerModerationTab from "./StandaloneTabs/PlayerModerationTab";
-import PersonalInfosTab from "./StandaloneTabs/PersonalInfosTab";
+import dayjs from 'dayjs';
+import PlayerModerationTab from './StandaloneTabs/PlayerModerationTab.vue';
+import PersonalInfosTab from './StandaloneTabs/PersonalInfosTab.vue';
+import earlyAdopterBadge from '../assets/early_adopter.png';
+import supporterBadge from '../assets/supporter.png';
 
 export default {
   name: 'Standalone',
@@ -374,32 +360,41 @@ export default {
     friends: [],
     friends_search: '',
     friends_headers: [
-      {text: 'World', align: 'start', value: 'worldId', sortable: false},
-      {text: 'Avatar Icon', value: 'userIcon', sortable: false},
-      {text: 'Avatar', value: 'avatar', sortable: false},
-      {text: 'Picture', value: 'profilePicOverride', sortable: false},
-      {text: 'Username', value: 'username'},
-      {text: 'Display Name', value: 'displayName'},
-      {text: 'Badges', value: 'badges', sortable: false},
-      {text: 'State', value: 'state.power'},
-      {text: 'Status', value: 'status.power'},
-      {text: 'Status Description', value: 'statusDescription'},
-      {text: 'Rank', value: 'rank.power'},
-      {text: 'Languages', value: 'languages'},
-      {text: 'Tags', value: 'tags'},
-      {text: 'Tags Length', value: 'tags.length'},
-      {text: 'Bio', value: 'bio'},
-      {text: 'Bio Links', value: 'bioLinks'},
-      {text: 'Last Platform', value: 'last_platform'},
-      {text: 'Join Date', value: 'date_joined'},
-      {text: 'Last Login', value: 'last_login'},
+      {title: 'World', align: 'start', key: 'worldId', sortable: false},
+      {title: 'Avatar Icon', key: 'userIcon', sortable: false},
+      {title: 'Avatar', key: 'avatar', sortable: false},
+      {title: 'Picture', key: 'profilePicOverride', sortable: false},
+      {title: 'Username', key: 'username'},
+      {title: 'Display Name', key: 'displayName'},
+      {title: 'Badges', key: 'badges', sortable: false},
+      {title: 'State', key: 'state.power'},
+      {title: 'Status', key: 'status.power'},
+      {title: 'Status Description', key: 'statusDescription'},
+      {title: 'Rank', key: 'rank.power'},
+      {title: 'Languages', key: 'languages'},
+      {title: 'Tags', key: 'tags'},
+      {title: 'Tags Length', key: 'tags.length'},
+      {title: 'Bio', key: 'bio'},
+      {title: 'Bio Links', key: 'bioLinks'},
+      {title: 'Last Platform', key: 'last_platform'},
+      {title: 'Join Date', key: 'date_joined'},
+      {title: 'Last Login', key: 'last_login'},
     ],
     friends_shown_headers: [],
     worlds: {},
     need_login_form: false,
     need_visit_vrc_home_form: false,
-    show_table: true,
-    scroll_top: 0
+    scroll_top: 0,
+    tab: 'friends',
+    itemsPerPageOptions: [
+      {value: 10, title: '10'},
+      {value: 25, title: '25'},
+      {value: 50, title: '50'},
+      {value: 100, title: '100'},
+      {value: -1, title: 'All'}
+    ],
+    earlyAdopterBadge,
+    supporterBadge
   }),
   computed: {
     ranksStats() {
@@ -424,10 +419,10 @@ export default {
       return this.friends_headers.length === this.friends_shown_headers.length
     },
     friendsHeadersSelectItems() {
-      return this.friends_headers.map(e => e.text)
+      return this.friends_headers.map(e => e.title)
     },
     friendsHeaders() {
-      return this.friends_headers.filter(e => this.friends_shown_headers.includes(e.text))
+      return this.friends_headers.filter(e => this.friends_shown_headers.includes(e.title))
     },
     isLoading() {
       return !this.user_data.id || this.friends.length < this.user_data.friends.length;
@@ -443,9 +438,10 @@ export default {
 
     this.fetchUser();
 
-    document.addEventListener('scroll', () => {
-      this.scroll_top = document.documentElement.scrollTop || document.body.scrollTop
-    })
+    document.addEventListener('scroll', this.onScroll);
+  },
+  beforeUnmount() {
+    document.removeEventListener('scroll', this.onScroll);
   },
   methods: {
     fetchUser() {
@@ -489,7 +485,6 @@ export default {
           .then(response => response.json())
           .then(data => {
             this.worlds[worldId] = data;
-            this.refreshTable();
           })
     },
     setUserData(user) {
@@ -560,7 +555,7 @@ export default {
       user.languages = user.tags.filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
     },
     setLastLogin(user) {
-      user.last_login = moment(user.last_login).format('YYYY-MM-DD HH:mm:ss');
+      user.last_login = dayjs(user.last_login).format('YYYY-MM-DD HH:mm:ss');
     },
     setLastPlatform(user) {
       switch (user.last_platform) {
@@ -577,7 +572,7 @@ export default {
         if (this.friendsHeadersShowAll) {
           this.friends_shown_headers = []
         } else {
-          this.friends_shown_headers = this.friends_headers.map(e => e.text)
+          this.friends_shown_headers = this.friends_headers.map(e => e.title)
         }
       })
     },
@@ -590,12 +585,8 @@ export default {
         this.fetchUser();
       })
     },
-    refreshTable() {
-      this.show_table = false;
-
-      this.$nextTick(() => {
-        this.show_table = true;
-      });
+    onScroll() {
+      this.scroll_top = document.documentElement.scrollTop || document.body.scrollTop
     }
   }
 }

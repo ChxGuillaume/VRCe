@@ -5,34 +5,39 @@
         <v-select
             v-model="event_types_shown"
             :items="event_types"
-            hide-details multiple solo
-            background-color="grey darken-3"
+            item-title="text"
+            item-value="value"
+            hide-details multiple
+            variant="solo"
+            bg-color="grey-darken-3"
             style="max-width: 80px"
-            @change="saveTypesShown"
+            @update:model-value="saveTypesShown"
         >
           <template v-slot:selection="{ index }">
             <v-icon v-if="index === 0">playlist_add_check</v-icon>
           </template>
-          <template v-slot:item="{ item, on, attrs }">
-            <v-card width="200px" class="d-flex align-center justify-space-between" color="transparent" flat>
-              <v-simple-checkbox
-                  v-ripple
-                  :value="event_types_shown.includes(item.value)"
-                  v-on="on"
-                  v-bind="attrs"
-              />
-              {{ item.text }}
-              <v-icon right :color="getBackgroundColor(item.value)">
-                adjust
-              </v-icon>
-            </v-card>
+          <template v-slot:item="{ item, props }">
+            <v-list-item v-bind="props" title="" width="200px">
+              <div class="d-flex align-center justify-space-between">
+                <v-checkbox-btn
+                    :model-value="event_types_shown.includes(item.value)"
+                    readonly
+                    class="flex-grow-0"
+                />
+                {{ item.text }}
+                <v-icon end :color="getBackgroundColor(item.value)">
+                  adjust
+                </v-icon>
+              </div>
+            </v-list-item>
           </template>
         </v-select>
         <v-spacer class="mx-3"/>
         <v-text-field
             v-model="search" class="mt-0" label="Search"
-            hide-details solo clearable
-            background-color="grey darken-3"
+            hide-details clearable
+            variant="solo"
+            bg-color="grey-darken-3"
         />
       </v-col>
     </v-row>
@@ -43,7 +48,8 @@
         max-width="100%"
         :height="listHeight"
         :style="{ 'margin-bottom': paginationPageCount > 1 ? '41px' : '0px'  }"
-        tile
+        rounded="0"
+        flat
     >
       <v-list-item
           v-for="event of filteredEventsPage"
@@ -60,17 +66,15 @@
                 v-if="eventImageSrc(event)"
                 :src="eventImageSrc(event)"
                 max-width="100"
+                width="100"
                 height="75"
+                cover
             >
               <template v-slot:placeholder>
-                <v-row
-                    class="fill-height ma-0"
-                    align="center"
-                    justify="center"
-                >
+                <v-row class="fill-height ma-0 align-center justify-center">
                   <v-progress-circular
                       indeterminate
-                      color="grey lighten-5"
+                      color="grey-lighten-5"
                   />
                 </v-row>
               </template>
@@ -87,77 +91,71 @@
                   v-if="event.content.details.imageUrl"
                   :src="event.content.details.imageUrl"
                   max-width="100"
+                  width="100"
                   height="75"
+                  cover
               >
                 <template v-slot:placeholder>
-                  <v-row
-                      class="fill-height ma-0"
-                      align="center"
-                      justify="center"
-                  >
+                  <v-row class="fill-height ma-0 align-center justify-center">
                     <v-progress-circular
                         indeterminate
-                        color="grey lighten-5"
+                        color="grey-lighten-5"
                     />
                   </v-row>
                 </template>
               </v-img>
-              <v-list-item-icon v-else class="mx-0 align-self-center" style="width: 100px">
+              <div v-else class="mx-0 align-self-center d-flex" style="width: 100px">
                 <v-icon size="40" class="mx-auto" :color="getNotificationColor(event.content.type)">
                   {{ getNotificationsIcon(event.content.type) }}
                 </v-icon>
-              </v-list-item-icon>
+              </div>
             </div>
             <v-card v-else width="100" height="75" color="transparent" flat>
-              <v-row
-                  class="fill-height ma-0"
-                  align="center"
-                  justify="center"
-              >
+              <v-row class="fill-height ma-0 align-center justify-center">
                 <v-progress-circular
                     indeterminate
-                    color="grey lighten-5"
+                    color="grey-lighten-5"
                 />
               </v-row>
             </v-card>
 
-            <v-list-item-content>
+            <div class="flex-grow-1">
               <v-row class="mx-0 align-center">
                 <v-col cols="9" class="text-center">
-                  <h3 v-if="event.type === 'friend-location'" class="subtitle-1">
+                  <h3 v-if="event.type === 'friend-location'" class="text-body-large">
                     <span v-if="event.content.user">{{ event.content.user.displayName }}</span>
-                    <span v-if="event.content.world.name" class="d-block mt-1 caption">
+                    <span v-if="event.content.world.name" class="d-block mt-1 text-body-small">
                       {{ event.content.world.name }}
                     </span>
                     <span v-else class="d-block mt-1">Private</span>
                   </h3>
                   <h3
                       v-else-if="['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type)"
-                      class="subtitle-1"
+                      class="text-body-large"
                   >
                     {{ event_types.find(e => event.type === e.value).text }}
-                    <span v-if="event.content.user" class="d-block mt-1 caption">
+                    <span v-if="event.content.user" class="d-block mt-1 text-body-small">
                       {{ event.content.user.displayName }}
                     </span>
                   </h3>
-                  <h3 v-else-if="event.type === 'notification'" class="subtitle-1">
-                <span class="d-block mt-1">
-                  {{ event.content.senderUsername }}
-                </span>
-                    <span v-if="event.content.details.requestMessage" class="d-block mt-1 caption">
-                  {{ event.content.details.requestMessage }}
-                </span>
-                    <span v-if="event.content.details.responseMessage" class="d-block mt-1 caption">
-                  {{ event.content.details.responseMessage }}
-                </span>
+                  <h3 v-else-if="event.type === 'notification'" class="text-body-large">
+                    <span class="d-block mt-1">
+                      {{ event.content.senderUsername }}
+                    </span>
+                    <span v-if="event.content.details.requestMessage" class="d-block mt-1 text-body-small">
+                      {{ event.content.details.requestMessage }}
+                    </span>
+                    <span v-if="event.content.details.responseMessage" class="d-block mt-1 text-body-small">
+                      {{ event.content.details.responseMessage }}
+                    </span>
                   </h3>
-                  <h3 v-else class="subtitle-1">{{ event.type }}</h3>
+                  <h3 v-else class="text-body-large">{{ event.type }}</h3>
                 </v-col>
                 <v-col cols="3" class="px-0 text-center">
-                  <h4 class="mt-3 subtitle-2">{{ event.display_date }}</h4>
+                  <h4 class="mt-3 text-title-small">{{ event.display_date }}</h4>
                 </v-col>
               </v-row>
-            </v-list-item-content>
+            </div>
           </v-col>
           <v-expand-transition>
             <v-col
@@ -173,12 +171,11 @@
             </v-col>
           </v-expand-transition>
         </v-row>
-        <div v-if="refresh_view"/>
       </v-list-item>
 
       <div v-if="!filteredEvents.length" class="fill-height d-flex align-center justify-center flex-column">
-        <h2 class="text-h6">No events right now.</h2>
-        <h3 class="subtitle-1">This will auto-refresh when events happen !!</h3>
+        <h2 class="text-title-large">No events right now.</h2>
+        <h3 class="text-body-large">This will auto-refresh when events happen !!</h3>
       </div>
     </v-card>
 
@@ -193,8 +190,9 @@
 </template>
 
 <script>
-import moment from 'moment';
-import PreviousUserChanges from "./EventsTab/PreviousUserChanges";
+import dayjs from 'dayjs';
+import PreviousUserChanges from './EventsTab/PreviousUserChanges.vue';
+import {MessageType, subscribeToEvents} from '../../shared/messages';
 
 export default {
   name: 'EventsTab',
@@ -233,8 +231,7 @@ export default {
       users_fetched: [],
       fetched_users_ids: [],
       show_changes_items: null,
-      refresh_view: true,
-      refresh_view_timout: null
+      unsubscribe: null
     }
   },
   computed: {
@@ -267,7 +264,7 @@ export default {
       return this.searchedEvents
           .filter(e => (['friend-update', 'friend-update'].includes(e.type) && e.content.previous_user_changes)
               || !['friend-update', 'friend-update'].includes(e.type))
-          .sort((a, b) => moment(b.date) - moment(a.date));
+          .sort((a, b) => dayjs(b.date) - dayjs(a.date));
     },
     filteredEventsPage() {
       return this.filteredEvents
@@ -280,22 +277,22 @@ export default {
   mounted() {
     this.loadTypesShown();
 
-    const port = (browser.runtime || chrome.extension).connect({
-      name: 'popup-event'
-    });
-
-    port.onMessage.addListener((msg) => {
+    this.unsubscribe = subscribeToEvents((msg) => {
       switch (msg.type) {
-        case 'all_events':
-          this.events = msg.events.sort((a, b) => moment(a.date) - moment(b.date));
+        case MessageType.ALL_EVENTS:
+          this.events = msg.events.sort((a, b) => dayjs(a.date) - dayjs(b.date));
+          // Iterate the reactive array so later (async) mutations trigger updates.
           this.events.forEach(event => this.setEventData(event));
           break;
-        case 'new_events':
+        case MessageType.NEW_EVENTS:
           this.events.push(msg.event);
-          this.setEventData(msg.event);
+          this.setEventData(this.events[this.events.length - 1]);
           break;
       }
     });
+  },
+  beforeUnmount() {
+    if (this.unsubscribe) this.unsubscribe();
   },
   methods: {
     eventImageSrc(event) {
@@ -317,7 +314,7 @@ export default {
       localStorage.setItem('popup-events-types-shown', JSON.stringify(this.event_types_shown));
     },
     setEventData(event) {
-      event.display_date = moment(event.date).format('MM/DD HH:mm:ss')
+      event.display_date = dayjs(event.date).format('MM/DD HH:mm:ss')
 
       if (event.type === 'friend-offline' || event.type === 'friend-delete') {
         this.setEventMissingUser(event);
@@ -330,13 +327,17 @@ export default {
 
       if (!event.content.user)
         event.content.user = this.users_fetched.find(friend => friend.id === event.content.userId);
-      if (!event.content.user && !this.fetched_users_ids.includes(event.content.userId))
+
+      if (event.content.user)
+        return;
+
+      if (!this.fetched_users_ids.includes(event.content.userId))
         this.fetchUser(event.content.userId)
             .then(data => {
               event.content.user = data;
-              this.refreshView();
             });
       else
+        // The user is already being fetched for another event, wait for it.
         setTimeout(() => {
           this.setEventMissingUser(event);
         }, 100);
@@ -422,13 +423,13 @@ export default {
     getNotificationColor(type) {
       switch (type) {
         case 'invite':
-          return 'blue lighten-2'
+          return 'blue-lighten-2'
         case 'requestInvite':
           return 'orange'
         case 'inviteResponse':
-          return 'pink darken-3'
+          return 'pink-darken-3'
         case 'friendRequest':
-          return 'green lighten-1'
+          return 'green-lighten-1'
         default:
           return 'grey'
       }
@@ -438,16 +439,6 @@ export default {
         this.show_changes_items = event.uid;
       else
         this.show_changes_items = null;
-
-      this.refreshView();
-    },
-    refreshView() {
-      this.refresh_view = false;
-
-      clearTimeout(this.refresh_view_timout);
-      this.refresh_view_timout = setTimeout(() => {
-        this.refresh_view = true;
-      }, 100);
     }
   }
 }

@@ -11,10 +11,10 @@
               v-for="type in playerModerationTypes"
               :key="type.type"
               :color="getTypeColor(type.type)"
-              :outlined="!type_filter.includes(type.type)"
+              :variant="type_filter.includes(type.type) ? 'flat' : 'outlined'"
               :value="type.type"
           >
-            <v-icon left>
+            <v-icon start>
               {{ type.icon }}
             </v-icon>
             {{ type.icon_text }} ({{ type.count }})
@@ -24,9 +24,9 @@
             v-model="name_filter"
             hide-details
             clearable
-            outlined
+            variant="outlined"
             rounded
-            dense
+            density="compact"
             placeholder="Search User..."
             style="max-width:250px;"
         />
@@ -41,7 +41,7 @@
         lg="2"
         @click="$refs.userDetails.fetchUser(user.targetUserId)"
       >
-        <v-row dense>
+        <v-row density="compact">
           <v-col cols="2" class="d-flex align-center">
             <v-icon
                 size="20" class="mx-auto"
@@ -63,8 +63,8 @@
 </template>
 
 <script>
-import * as moment from 'moment';
-import UserDetails from '../UserDetails';
+import dayjs from 'dayjs';
+import UserDetails from '../UserDetails.vue';
 
 export default {
   name: 'PlayerModerationTab',
@@ -82,9 +82,9 @@ export default {
       name_filter: '',
       player_moderation: [],
       player_moderation_headers: [
-        {text: 'User', align: 'start', value: 'targetDisplayName', groupable: false},
-        {text: 'Type', align: 'start', value: 'type'},
-        {text: 'Date', align: 'start', value: 'created', groupable: false},
+        {title: 'User', align: 'start', key: 'targetDisplayName'},
+        {title: 'Type', align: 'start', key: 'type'},
+        {title: 'Date', align: 'start', key: 'created'},
       ],
     }
   },
@@ -182,7 +182,7 @@ export default {
       }
     },
     setCreated(row) {
-      row.created = moment(row.created).format('YYYY-MM-DD HH:mm:ss');
+      row.created = dayjs(row.created).format('YYYY-MM-DD HH:mm:ss');
     }
   }
 }

@@ -4,15 +4,16 @@
       color="transparent"
       max-width="100%"
       height="max(calc(100vh - 216px), 384px)"
-      tile
+      rounded="0"
+      flat
   >
     <v-row class="mx-0">
       <v-col cols="12" class="d-flex justify-center align-center">
-        <v-btn icon small color="grey darken-1" class="mr-1" @click="show_icons = !show_icons">
+        <v-btn icon size="small" variant="text" color="grey-darken-1" class="mr-1" @click="show_icons = !show_icons">
           <v-icon>{{ show_icons ? 'remove' : 'add' }}</v-icon>
         </v-btn>
         <h3 class="mr-5 text-center">Icons ({{ Icons.length }} / 64)</h3>
-        <v-btn color="primary" small href="https://vrchat.com/home/gallery" target="_blank">
+        <v-btn color="primary" size="small" href="https://vrchat.com/home/gallery" target="_blank">
           Upload
         </v-btn>
       </v-col>
@@ -28,24 +29,20 @@
             style="position: relative; cursor: pointer"
         >
           <div
-              class="d-inline-block pa-1 rounded-circle darken-2"
-              :class="{ 'green': icon.current, 'grey': !icon.current }"
+              class="d-inline-block pa-1 rounded-circle"
+              :class="{ 'bg-green-darken-2': icon.current, 'bg-grey-darken-2': !icon.current }"
               style="position: relative; cursor: pointer"
               @click="changeIcon($event, icon.url)"
           >
-            <v-btn fab absolute x-small class="deleteBtn" color="red" @click="delete_file_id = icon.id">
-              <v-icon small>delete</v-icon>
+            <v-btn icon size="x-small" position="absolute" class="deleteBtn" color="red" @click.stop="delete_file_id = icon.id">
+              <v-icon size="small">delete</v-icon>
             </v-btn>
-            <v-img class="rounded-circle" :src="icon.url" width="68" height="68">
+            <v-img class="rounded-circle" :src="icon.url" width="68" height="68" cover>
               <template v-slot:placeholder>
-                <v-row
-                    class="fill-height ma-0"
-                    align="center"
-                    justify="center"
-                >
+                <v-row class="fill-height ma-0 align-center justify-center">
                   <v-progress-circular
                       indeterminate
-                      color="grey lighten-5"
+                      color="grey-lighten-5"
                   />
                 </v-row>
               </template>
@@ -56,11 +53,11 @@
     </v-expand-transition>
     <v-row class="mx-0">
       <v-col cols="12" class="d-flex justify-center align-center">
-        <v-btn icon small color="grey darken-1" class="mr-1" @click="show_pictures = !show_pictures">
+        <v-btn icon size="small" variant="text" color="grey-darken-1" class="mr-1" @click="show_pictures = !show_pictures">
           <v-icon>{{ show_pictures ? 'remove' : 'add' }}</v-icon>
         </v-btn>
         <h3 class="mr-5 text-center">Pictures ({{ Pictures.length }} / 64)</h3>
-        <v-btn color="primary" small href="https://vrchat.com/home/gallery" target="_blank">
+        <v-btn color="primary" size="small" href="https://vrchat.com/home/gallery" target="_blank">
           Upload
         </v-btn>
       </v-col>
@@ -77,24 +74,20 @@
             style="position: relative; cursor: pointer"
         >
           <div
-              class="d-inline-block pa-1 rounded darken-2"
-              :class="{ 'green': picture.current, 'grey': !picture.current }"
+              class="d-inline-block pa-1 rounded"
+              :class="{ 'bg-green-darken-2': picture.current, 'bg-grey-darken-2': !picture.current }"
               style="position: relative; cursor: pointer"
               @click="changePicture($event, picture.url)"
           >
-            <v-btn fab absolute x-small class="deleteBtn" color="red" @click="delete_file_id = picture.id">
-              <v-icon small>delete</v-icon>
+            <v-btn icon size="x-small" position="absolute" class="deleteBtn" color="red" @click.stop="delete_file_id = picture.id">
+              <v-icon size="small">delete</v-icon>
             </v-btn>
-            <v-img class="rounded" :src="picture.url" width="162" height="91">
+            <v-img class="rounded" :src="picture.url" width="162" height="91" cover>
               <template v-slot:placeholder>
-                <v-row
-                    class="fill-height ma-0"
-                    align="center"
-                    justify="center"
-                >
+                <v-row class="fill-height ma-0 align-center justify-center">
                   <v-progress-circular
                       indeterminate
-                      color="grey lighten-5"
+                      color="grey-lighten-5"
                   />
                 </v-row>
               </template>
@@ -106,24 +99,25 @@
 
     <v-dialog
         max-width="220"
-        :value="delete_file_id"
+        :model-value="!!delete_file_id"
+        @update:model-value="value => { if (!value) delete_file_id = '' }"
     >
       <v-card>
-        <v-card-title class="text-h5">
+        <v-card-title class="text-headline-small">
           Are you sure ?
         </v-card-title>
         <v-card-actions>
           <v-spacer/>
           <v-btn
-              color="red darken-1"
-              text
+              color="red-darken-1"
+              variant="text"
               @click="delete_file_id = ''"
           >
             No
           </v-btn>
           <v-btn
-              color="green darken-1"
-              text
+              color="green-darken-1"
+              variant="text"
               @click="deleteFile"
           >
             Yes
@@ -137,6 +131,7 @@
 <script>
 export default {
   name: 'GalleryTab',
+  emits: ['new-user-data'],
   props: {
     user_data: {
       type: Object,

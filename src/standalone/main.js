@@ -1,10 +1,11 @@
-import Vue from 'vue'
-import App from './App.vue'
-import vuetify from '../plugins/vuetify'
+import {createApp} from 'vue';
+import App from './App.vue';
+import vuetify from '../plugins/vuetify';
+import {migrateLegacyStorage} from '../shared/storage';
+import {listenForDevReload} from '../shared/messages';
 
-/* eslint-disable no-new */
-new Vue({
-  el: '#app',
-  vuetify,
-  render: h => h(App)
-})
+listenForDevReload();
+
+migrateLegacyStorage()
+    .catch(e => console.warn('Legacy storage migration failed', e))
+    .finally(() => createApp(App).use(vuetify).mount('#app'));

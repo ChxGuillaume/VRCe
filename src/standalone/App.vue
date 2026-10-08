@@ -6,7 +6,7 @@
 
 <script>
 
-import Standalone from "../components/Standalone";
+import Standalone from "../components/Standalone.vue";
 export default {
   name: 'App',
   components: {Standalone}

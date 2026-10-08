@@ -1,13 +1,14 @@
 <template>
   <v-container fluid class="pb-0">
-    <v-tooltip v-if="logged_in" right>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip v-if="logged_in" location="right">
+      <template v-slot:activator="{ props }">
         <v-btn
-            fixed top left fab
+            v-bind="props"
+            class="fab-top-left"
+            position="fixed"
+            icon
+            size="small"
             color="red"
-            small
-            v-bind="attrs"
-            v-on="on"
             @click="logoutFromVRChat"
         >
           <v-icon>logout</v-icon>
@@ -15,15 +16,15 @@
       </template>
       <span>Disconnect from VRChat Home</span>
     </v-tooltip>
-    <v-tooltip v-else-if="cloudflare_error" right>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip v-else-if="cloudflare_error" location="right">
+      <template v-slot:activator="{ props }">
         <v-btn
-            fixed top left fab
-            color="yellow darken-1"
-            small
-            light
-            v-bind="attrs"
-            v-on="on"
+            v-bind="props"
+            class="fab-top-left"
+            position="fixed"
+            icon
+            size="small"
+            color="yellow-darken-1"
             @click="goToVRCLogin"
         >
           <v-icon>warning</v-icon>
@@ -31,14 +32,15 @@
       </template>
       <span>Please check VRChat Website <br> and try using the extension again</span>
     </v-tooltip>
-    <v-tooltip v-else right>
-      <template v-slot:activator="{ on, attrs }">
+    <v-tooltip v-else location="right">
+      <template v-slot:activator="{ props }">
         <v-btn
-            fixed top left fab
+            v-bind="props"
+            class="fab-top-left"
+            position="fixed"
+            icon
+            size="small"
             color="green"
-            small
-            v-bind="attrs"
-            v-on="on"
             @click="goToVRCLogin"
         >
           <v-icon>login</v-icon>
@@ -49,38 +51,40 @@
 
     <v-btn
         v-if="fetching"
-        fixed top left fab
-        class="rotate"
+        class="fab-top-left rotate"
+        position="fixed"
+        icon
+        size="small"
         color="grey"
-        small
     >
       <v-icon>sync</v-icon>
     </v-btn>
 
     <v-speed-dial
         v-model="toolbox"
-        direction="bottom"
-        top right fixed open-on-hover
+        location="bottom center"
         transition="slide-y-transition"
+        open-on-hover
     >
-      <template v-slot:activator>
+      <template v-slot:activator="{ props: activatorProps }">
         <v-btn
-            v-model="toolbox"
-            fab small
+            v-bind="activatorProps"
+            class="fab-top-right"
+            position="fixed"
+            icon
+            size="small"
             color="primary"
         >
           <v-icon>home_repair_service</v-icon>
         </v-btn>
       </template>
-      <v-tooltip left color="grey darken-2">
-        <template v-slot:activator="{ on, attrs }">
+      <v-tooltip key="data" location="left" content-class="bg-grey-darken-2">
+        <template v-slot:activator="{ props }">
           <v-btn
-              v-bind="attrs"
-              v-on="on"
-              fab
-              dark
-              x-small
-              color="grey darken-2"
+              v-bind="props"
+              icon
+              size="x-small"
+              color="grey-darken-2"
               @click="goToData"
           >
             <v-icon>storage</v-icon>
@@ -88,14 +92,12 @@
         </template>
         <span>Open Data Table</span>
       </v-tooltip>
-      <v-tooltip left color="indigo">
-        <template v-slot:activator="{ on, attrs }">
+      <v-tooltip key="vr" location="left" content-class="bg-indigo">
+        <template v-slot:activator="{ props }">
           <v-btn
-              v-bind="attrs"
-              v-on="on"
-              fab
-              dark
-              x-small
+              v-bind="props"
+              icon
+              size="x-small"
               color="indigo"
               @click="checkVRCCurrentSessionInVR"
           >
@@ -122,45 +124,40 @@
           <v-img
               :src="user_data.currentAvatarThumbnailImageUrl"
               class="rounded clickable"
-              contain
               width="128"
               height="96"
               @click="fetchUserDetails($event, user_data.id)"
           >
             <template v-slot:placeholder>
-              <v-row
-                  class="fill-height ma-0"
-                  align="center"
-                  justify="center"
-              >
+              <div class="d-flex fill-height align-center justify-center">
                 <v-progress-circular
                     indeterminate
-                    color="grey lighten-5"
+                    color="grey-lighten-5"
                 />
-              </v-row>
+              </div>
             </template>
           </v-img>
         </div>
         <h1
-            class="mt-1 d-inline-block text-h5 font-weight-bold clickable"
+            class="mt-1 d-inline-block text-headline-small font-weight-bold clickable"
             @click="fetchUserDetails($event, user_data.id)"
         >
           {{ user_data.displayName }}
         </h1>
       </v-col>
       <v-col cols="12" class="pa-0">
-        <v-tabs-items v-model="bottom_navigator" style="background-color: transparent">
-          <v-tab-item value="friends">
+        <v-window v-model="bottom_navigator">
+          <v-window-item value="friends">
             <v-row class="mx-0">
               <v-col v-if="hasUserData" class="d-flex align-center justify-space-around my-2">
                 <v-text-field
                     v-model="friend_search"
-                    background-color="grey darken-3"
+                    bg-color="grey-darken-3"
                     class="mt-0"
                     label="Search"
+                    variant="solo"
                     hide-details
                     clearable
-                    solo
                 />
               </v-col>
             </v-row>
@@ -170,12 +167,12 @@
                 color="transparent"
                 max-width="100%"
                 height="max(calc(100vh - 280px), 320px)"
-                tile
+                rounded="0"
+                flat
             >
-              <v-list-item
+              <div
                   v-for="[index, friendStatusGroup] of Object.entries(groupedSortedFriends)"
                   :key="friendStatusGroup.power"
-                  class="pa-0 d-block"
                   :class="{ 'mb-6': groupedSortedFriends.length !== (parseInt(index) + 1) }"
               >
                 <v-card>
@@ -183,23 +180,26 @@
                     <v-row class="mx-0 align-center">
                       <v-col cols="12" class="text-center d-flex align-center justify-center"
                              style="position:relative;">
-                        <v-chip x-small class="mr-3" :color="friendStatusGroup.color"/>
+                        <v-chip size="x-small" variant="flat" class="mr-3" :color="friendStatusGroup.color"/>
 
-                        <h3 class="d-inline-block subtitle-1"
+                        <h3 class="d-inline-block text-body-large"
                             style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
                           {{ friendStatusGroup.name }}
                         </h3>
 
-                        <v-tooltip color="grey darken-2" left>
-                          <template v-slot:activator="{ on, attrs }">
+                        <v-tooltip location="left" content-class="bg-grey-darken-2">
+                          <template v-slot:activator="{ props }">
                             <v-btn
-                                icon absolute small
+                                v-bind="props"
+                                icon
+                                variant="text"
+                                size="small"
                                 class="my-auto"
-                                color="grey darken-2" style="bottom:0;top:0;right:6px;"
+                                color="grey-darken-2"
+                                style="position:absolute;bottom:0;top:0;right:6px;"
                                 @click="closedGroupsToggle(friendStatusGroup.power)"
-                                v-bind="attrs" v-on="on"
                             >
-                              <v-icon small>{{
+                              <v-icon size="small">{{
                                   !closed_groups.includes(friendStatusGroup.power) ? 'remove' : 'add'
                                 }}
                               </v-icon>
@@ -223,74 +223,76 @@
                           @click="fetchUserDetails($event, friend.id)"
                           @click.right.prevent="openFriendMenu($event, friend)"
                       >
-                        <friend-picture :friend="friend"/>
+                        <template v-slot:prepend>
+                          <friend-picture :friend="friend"/>
+                        </template>
 
-                        <v-list-item-content>
-                          <v-row class="mx-0 align-center">
-                            <v-col cols="9" class="text-center">
-                              <h3 class="subtitle-1">{{ friend.displayName }}</h3>
-                            </v-col>
-                            <v-col cols="3" class="d-flex align-center justify-end">
-                              <v-tooltip left color="grey darken-4">
-                                <template v-slot:activator="{ on, attrs }">
-                                  <v-btn
-                                      v-if="friend.world_link"
-                                      v-bind="attrs" v-on="on"
-                                      icon
-                                      @click="sendInviteToInstance(friend.location)"
-                                  >
-                                    <v-icon>add_location_alt</v-icon>
-                                  </v-btn>
-                                </template>
-                                <span>Send me invite to Instance</span>
-                              </v-tooltip>
-                            </v-col>
-                          </v-row>
-                        </v-list-item-content>
+                        <v-row class="mx-0 align-center">
+                          <v-col cols="9" class="text-center">
+                            <h3 class="text-body-large">{{ friend.displayName }}</h3>
+                          </v-col>
+                          <v-col cols="3" class="d-flex align-center justify-end">
+                            <v-tooltip location="left" content-class="bg-grey-darken-4">
+                              <template v-slot:activator="{ props }">
+                                <v-btn
+                                    v-if="friend.world_link"
+                                    v-bind="props"
+                                    icon
+                                    variant="text"
+                                    @click.stop="sendInviteToInstance(friend.location)"
+                                >
+                                  <v-icon>add_location_alt</v-icon>
+                                </v-btn>
+                              </template>
+                              <span>Send me invite to Instance</span>
+                            </v-tooltip>
+                          </v-col>
+                        </v-row>
                       </v-list-item>
                     </div>
                   </v-expand-transition>
                 </v-card>
-              </v-list-item>
+              </div>
             </v-card>
-          </v-tab-item>
-          <v-tab-item value="worlds">
+          </v-window-item>
+          <v-window-item value="worlds">
             <worlds-tab
                 :friends="friends"
                 :worlds="worlds"
                 @user-details="fetchUserDetails(null, $event)"
                 @user-menu="openFriendMenu($event.$event, $event.friend)"
             />
-          </v-tab-item>
-          <v-tab-item value="events">
+          </v-window-item>
+          <v-window-item value="events">
             <events-tab :friends="friends"/>
-          </v-tab-item>
-          <v-tab-item value="gallery" :disabled="!isUserVRCPlus">
+          </v-window-item>
+          <v-window-item value="gallery" :disabled="!isUserVRCPlus">
             <gallery-tab :user_data="user_data" @new-user-data="user_data = $event"/>
-          </v-tab-item>
-          <v-tab-item value="settings">
+          </v-window-item>
+          <v-window-item value="settings">
             <settings-tab/>
-          </v-tab-item>
-        </v-tabs-items>
+          </v-window-item>
+        </v-window>
       </v-col>
     </v-row>
 
     <v-navigation-drawer
         v-model="drawer"
-        fixed
-        left
-        width="100%"
+        location="left"
+        :width="drawer_width"
+        temporary
     >
-      <v-card min-height="100%">
-        <v-tooltip v-if="logged_in" right>
-          <template v-slot:activator="{ on, attrs }">
+      <v-card min-height="100%" rounded="0">
+        <v-tooltip v-if="logged_in" location="right">
+          <template v-slot:activator="{ props }">
             <v-btn
-                fixed top left fab
+                v-bind="props"
+                class="fab-top-left"
+                position="fixed"
+                icon
+                size="small"
                 color="primary"
-                small
                 style="top: 20px"
-                v-bind="attrs"
-                v-on="on"
                 @click="drawer = false"
             >
               <v-icon>arrow_back</v-icon>
@@ -302,15 +304,15 @@
         <v-card-text>
           <v-row class="pt-2">
             <v-col cols="12" class="pb-0 d-flex justify-center align-center flex-column">
-              <h2 class="mr-2 text-h5 font-weight-bold d-inline-block">{{ user_details.displayName }}</h2>
-              <span class="caption">{{ user_details.username }}</span>
+              <h2 class="mr-2 text-headline-small font-weight-bold d-inline-block">{{ user_details.displayName }}</h2>
+              <span class="text-body-small">{{ user_details.username }}</span>
             </v-col>
             <v-col cols="12" class="pt-1 d-flex justify-center align-center">
               <v-chip
                   v-if="user_details.status"
                   :color="user_details.status.color"
-                  :light="user_details.status.light"
-                  small
+                  variant="flat"
+                  size="small"
                   class="mx-2"
               >
                 {{ user_details.status.name }}
@@ -318,8 +320,8 @@
               <v-chip
                   v-if="user_details.rank"
                   :color="user_details.rank.color"
-                  :light="user_details.rank.light"
-                  small
+                  variant="flat"
+                  size="small"
               >
                 {{ user_details.rank.name }}
               </v-chip>
@@ -327,63 +329,51 @@
             <v-col cols="12" class="d-flex justify-center">
               <div v-if="user_details.profilePicOverride" class="d-inline-block rounded pa-1 mx-1"
                    :style="{ background: user_details.rank ? user_details.rank.color : '' }">
-                <v-img class="rounded" :src="user_details.profilePicOverride" height="75" width="133">
+                <v-img class="rounded" :src="user_details.profilePicOverride" height="75" width="133" cover>
                   <template v-slot:placeholder>
-                    <v-row
-                        class="fill-height ma-0"
-                        align="center"
-                        justify="center"
-                    >
+                    <div class="d-flex fill-height align-center justify-center">
                       <v-progress-circular
                           indeterminate
-                          color="grey lighten-5"
+                          color="grey-lighten-5"
                       />
-                    </v-row>
+                    </div>
                   </template>
                 </v-img>
               </div>
               <div v-if="user_details.userIcon" class="d-inline-block rounded pa-1 mx-1"
                    :style="{ background: user_details.rank ? user_details.rank.color : '' }">
-                <v-img class="rounded" :src="user_details.userIcon" height="75" width="75">
+                <v-img class="rounded" :src="user_details.userIcon" height="75" width="75" cover>
                   <template v-slot:placeholder>
-                    <v-row
-                        class="fill-height ma-0"
-                        align="center"
-                        justify="center"
-                    >
+                    <div class="d-flex fill-height align-center justify-center">
                       <v-progress-circular
                           indeterminate
-                          color="grey lighten-5"
+                          color="grey-lighten-5"
                       />
-                    </v-row>
+                    </div>
                   </template>
                 </v-img>
               </div>
               <div class="d-inline-block rounded pa-1 mx-1"
                    :style="{ background: user_details.rank ? user_details.rank.color : '' }">
-                <v-img class="rounded" :src="user_details.currentAvatarThumbnailImageUrl" height="75" width="100">
+                <v-img class="rounded" :src="user_details.currentAvatarThumbnailImageUrl" height="75" width="100" cover>
                   <template v-slot:placeholder>
-                    <v-row
-                        class="fill-height ma-0"
-                        align="center"
-                        justify="center"
-                    >
+                    <div class="d-flex fill-height align-center justify-center">
                       <v-progress-circular
                           indeterminate
-                          color="grey lighten-5"
+                          color="grey-lighten-5"
                       />
-                    </v-row>
+                    </div>
                   </template>
                 </v-img>
               </div>
             </v-col>
             <v-col cols="12" v-if="user_details.statusDescription">
               <h4>Status:</h4>
-              <span class="caption">{{ user_details.statusDescription }}</span>
+              <span class="text-body-small">{{ user_details.statusDescription }}</span>
             </v-col>
             <v-col cols="12">
               <h4>Bio:</h4>
-              <span class="caption text-pre-wrap">
+              <span class="text-body-small text-pre-wrap">
                 {{ user_details.bio || '(No Bio)' }}
               </span>
             </v-col>
@@ -402,88 +392,86 @@
             </v-col>
             <v-col cols="12">
               <h4>Last Platform:</h4>
-              <span class="caption">{{ user_details.last_platform }}</span>
+              <span class="text-body-small">{{ user_details.last_platform }}</span>
             </v-col>
             <v-col cols="6">
               <h4>Date Joined:</h4>
-              <span class="caption">{{ user_details.date_joined }}</span>
+              <span class="text-body-small">{{ user_details.date_joined }}</span>
             </v-col>
             <v-col cols="6">
               <h4>Last Login:</h4>
-              <span class="caption">{{ user_details.last_login }}</span>
+              <span class="text-body-small">{{ user_details.last_login }}</span>
             </v-col>
             <v-col cols="12" v-if="user_details.world">
               <h4>
                 <span>World:</span>
-                <span v-if="user_details.location_type" class="mx-2 caption grey--text font-italic">
+                <span v-if="user_details.location_type" class="mx-2 text-body-small text-grey font-italic">
                   ({{ user_details.location_type }})
                 </span>
-                <span v-if="user_details.location_region" class="caption grey--text font-italic">
+                <span v-if="user_details.location_region" class="text-body-small text-grey font-italic">
                   ({{ user_details.location_region }})
                 </span>
               </h4>
-              <v-skeleton-loader type="image" width="256" height="192">
-                <v-img :src="user_details.world.thumbnailImageUrl" class="rounded mx-auto my-2" width="256"
-                       height="192"/>
-              </v-skeleton-loader>
-              <h5 class="mt-3 text-h6 text-center">{{ user_details.world.name }}</h5>
-              <h6 v-if="user_details.world.author_tags" class="mb-3 subtitle-2 text-center grey--text">
+              <v-img :src="user_details.world.thumbnailImageUrl" class="rounded mx-auto my-2" width="256"
+                     height="192" cover>
+                <template v-slot:placeholder>
+                  <v-skeleton-loader type="image" width="256" height="192"/>
+                </template>
+              </v-img>
+              <h5 class="mt-3 text-title-large text-center">{{ user_details.world.name }}</h5>
+              <h6 v-if="user_details.world.author_tags" class="mb-3 text-title-small text-center text-grey">
                 {{ user_details.world.author_tags.join(', ') }}
               </h6>
               <div class="my-2">
-                <v-icon v-for="i in user_details.world.heat" :key="i" small color="orange">
+                <v-icon v-for="i in user_details.world.heat" :key="i" size="small" color="orange">
                   local_fire_department
                 </v-icon>
               </div>
               <p class="mt-2 mb-0 text-pre-wrap">{{ user_details.world.description }}</p>
-              <v-simple-table v-if="user_details.world.id" class="my-2">
-                <template v-slot:default>
-                  <thead>
-                  <tr>
-                    <th class="text-left">
-                      Occupants
-                    </th>
-                    <th class="text-left">
-                      Public
-                    </th>
-                    <th class="text-left">
-                      Private
-                    </th>
-                  </tr>
-                  </thead>
-                  <tbody>
-                  <tr>
-                    <td>{{ formatNumber(user_details.world.occupants) }}</td>
-                    <td>{{ formatNumber(user_details.world.publicOccupants) }}</td>
-                    <td>{{ formatNumber(user_details.world.privateOccupants) }}</td>
-                  </tr>
-                  </tbody>
-                </template>
-              </v-simple-table>
-              <v-simple-table v-if="user_details.world.id" class="my-2">
-                <template v-slot:default>
-                  <thead>
-                  <tr>
-                    <th class="text-left">
-                      Favorites
-                    </th>
-                    <th class="text-left">
-                      Visits
-                    </th>
-                    <th class="text-left">
-                      Version
-                    </th>
-                  </tr>
-                  </thead>
-                  <tbody>
-                  <tr>
-                    <td>{{ formatNumber(user_details.world.favorites) }}</td>
-                    <td>{{ formatNumber(user_details.world.visits) }}</td>
-                    <td>{{ formatNumber(user_details.world.version) }}</td>
-                  </tr>
-                  </tbody>
-                </template>
-              </v-simple-table>
+              <v-table v-if="user_details.world.id" class="my-2">
+                <thead>
+                <tr>
+                  <th class="text-left">
+                    Occupants
+                  </th>
+                  <th class="text-left">
+                    Public
+                  </th>
+                  <th class="text-left">
+                    Private
+                  </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td>{{ formatNumber(user_details.world.occupants) }}</td>
+                  <td>{{ formatNumber(user_details.world.publicOccupants) }}</td>
+                  <td>{{ formatNumber(user_details.world.privateOccupants) }}</td>
+                </tr>
+                </tbody>
+              </v-table>
+              <v-table v-if="user_details.world.id" class="my-2">
+                <thead>
+                <tr>
+                  <th class="text-left">
+                    Favorites
+                  </th>
+                  <th class="text-left">
+                    Visits
+                  </th>
+                  <th class="text-left">
+                    Version
+                  </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td>{{ formatNumber(user_details.world.favorites) }}</td>
+                  <td>{{ formatNumber(user_details.world.visits) }}</td>
+                  <td>{{ formatNumber(user_details.world.version) }}</td>
+                </tr>
+                </tbody>
+              </v-table>
               <div v-if="user_details.world.created_at">
                 Created: <strong>{{ user_details.world.created_at }}</strong>
               </div>
@@ -501,7 +489,7 @@
         width="500"
     >
       <v-card>
-        <v-card-title class="text-h5 primary mb-3">
+        <v-card-title class="text-headline-small bg-primary mb-3">
           Info
         </v-card-title>
 
@@ -516,14 +504,14 @@
           <v-spacer></v-spacer>
           <v-btn
               color="primary"
-              text
-              @click="() => { this.openVRCCurrentSessionInVR(); this.no_session_dialog = false; }"
+              variant="text"
+              @click="confirmOpenVRCSession"
           >
             Yes
           </v-btn>
           <v-btn
               color="grey"
-              text
+              variant="text"
               @click="no_session_dialog = false"
           >
             No
@@ -535,76 +523,73 @@
     <v-snackbar
         v-model="invite_sent"
         :timeout="3000"
-        bottom text color="primary"
-        transition="slide-y-reverse-transition" style="bottom:56px;"
+        location="bottom"
+        variant="tonal"
+        color="primary"
+        transition="slide-y-reverse-transition"
+        style="margin-bottom: 64px;"
     >
-      <v-icon color="primary" left>add_location_alt</v-icon>
+      <v-icon color="primary" start>add_location_alt</v-icon>
       Invite Sent.
     </v-snackbar>
 
     <v-menu
         v-model="friend_menu"
-        :position-x="menu_pos.x"
-        :position-y="menu_pos.y"
+        :target="[menu_pos.x, menu_pos.y]"
         transition="slide-y-transition"
-        offset-y
-        fixed
     >
       <v-list class="pa-0">
-        <v-list-item @click="toggleFavoriteFriend">
-          <v-list-item-icon>
-            <v-icon>
-              {{ friend_menu_item.favorited ? 'star_outline' : 'star' }}
-            </v-icon>
-          </v-list-item-icon>
-          <v-list-item-title>
-            {{ friend_menu_item.favorited ? 'Unfavorite' : 'Favorite' }}
-          </v-list-item-title>
-        </v-list-item>
+        <v-list-item
+            :prepend-icon="friend_menu_item.favorited ? 'star_outline' : 'star'"
+            :title="friend_menu_item.favorited ? 'Unfavorite' : 'Favorite'"
+            @click="toggleFavoriteFriend"
+        />
       </v-list>
     </v-menu>
 
-    <v-bottom-navigation v-if="hasUserData" v-model="bottom_navigator" shift fixed grow color="primary">
-      <v-btn height="100%" value="friends" color="transparent">
-        <span>Friends</span>
-
+    <v-bottom-navigation v-if="hasUserData" v-model="bottom_navigator" mode="shift" grow color="primary">
+      <v-btn value="friends">
         <v-icon>people</v-icon>
+
+        <span>Friends</span>
       </v-btn>
 
-      <v-btn height="100%" value="worlds" color="transparent">
-        <span>Worlds</span>
-
+      <v-btn value="worlds">
         <v-icon>public</v-icon>
+
+        <span>Worlds</span>
       </v-btn>
 
-      <v-btn height="100%" value="events" color="transparent">
-        <span>Events</span>
-
+      <v-btn value="events">
         <v-icon>history</v-icon>
+
+        <span>Events</span>
       </v-btn>
 
-      <v-btn height="100%" value="gallery" color="transparent" :disabled="!isUserVRCPlus">
-        <span>Gallery</span>
-
+      <v-btn value="gallery" :disabled="!isUserVRCPlus">
         <v-icon>collections</v-icon>
+
+        <span>Gallery</span>
       </v-btn>
 
-      <v-btn height="100%" value="settings" color="transparent">
-        <span>Settings</span>
-
+      <v-btn value="settings">
         <v-icon>settings</v-icon>
+
+        <span>Settings</span>
       </v-btn>
     </v-bottom-navigation>
   </v-container>
 </template>
 
 <script>
-import * as moment from "moment";
-import EventsTab from "./PopupTabs/EventsTab";
-import SettingsTab from "./PopupTabs/SettingsTab";
-import WorldsTab from "./PopupTabs/WorldsTab";
-import GalleryTab from "./PopupTabs/GalleryTab";
-import FriendPicture from "./PopupComponents/FriendPicture";
+import dayjs from 'dayjs';
+import EventsTab from "./PopupTabs/EventsTab.vue";
+import SettingsTab from "./PopupTabs/SettingsTab.vue";
+import WorldsTab from "./PopupTabs/WorldsTab.vue";
+import GalleryTab from "./PopupTabs/GalleryTab.vue";
+import FriendPicture from "./PopupComponents/FriendPicture.vue";
+import {getFavoriteFriends, toggleFavoriteFriend} from '../shared/storage';
+import {MessageType, sendToBackground} from '../shared/messages';
 
 export default {
   name: 'Popup',
@@ -622,6 +607,7 @@ export default {
       user_details: {},
       worlds: [],
       drawer: false,
+      drawer_width: window.innerWidth,
       no_session_dialog: false,
       bottom_navigator: 'friends',
       invite_sent: false,
@@ -690,17 +676,15 @@ export default {
   mounted() {
     this.fetchUser();
 
-    this.port = (browser.runtime || chrome.extension).connect({
-      name: 'popup-app'
-    });
+    getFavoriteFriends().then(favorite_friends => this.favorite_friends = favorite_friends);
+    sendToBackground(MessageType.REFRESH_CONNECTION);
 
-    this.port.onMessage.addListener((msg) => {
-      if (msg.type === 'favorite_friends') {
-        this.favorite_friends = msg.favorite_friends;
-      }
-    });
+    window.addEventListener('resize', this.updateDrawerWidth);
 
     this.bottom_navigator = localStorage.getItem('default_tab') || 'friends';
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.updateDrawerWidth);
   },
   methods: {
     fetchUser() {
@@ -748,15 +732,15 @@ export default {
         fetch(`https://vrchat.com/api/1/worlds/${worldId}`)
             .then(response => response.json())
             .then(data => {
-              data.created_at = moment(data.created_at).format('YYYY-MM-DD HH:mm:ss');
-              data.updated_at = moment(data.updated_at).format('YYYY-MM-DD HH:mm:ss');
+              data.created_at = dayjs(data.created_at).format('YYYY-MM-DD HH:mm:ss');
+              data.updated_at = dayjs(data.updated_at).format('YYYY-MM-DD HH:mm:ss');
 
               data.publicationDate = data.publicationDate !== 'none'
-                  ? moment(data.publicationDate).format('YYYY-MM-DD HH:mm:ss')
+                  ? dayjs(data.publicationDate).format('YYYY-MM-DD HH:mm:ss')
                   : data.publicationDate;
 
               data.labsPublicationDate = data.labsPublicationDate !== 'none'
-                  ? moment(data.labsPublicationDate).format('YYYY-MM-DD HH:mm:ss')
+                  ? dayjs(data.labsPublicationDate).format('YYYY-MM-DD HH:mm:ss')
                   : data.labsPublicationDate;
 
               data.author_tags = data.tags.filter(e => e.includes('author_tag')).map(e => e.replace('author_tag_', '')) || [];
@@ -810,14 +794,14 @@ export default {
         this.friends = [];
         this.fetchUser();
 
-        this.port.postMessage({type: 'logout'});
+        sendToBackground(MessageType.LOGOUT);
       })
     },
     goToVRCLogin() {
       chrome.tabs.create({url: `https://vrchat.com/home/login`});
     },
     goToData() {
-      chrome.tabs.create({url: `/index.html`});
+      chrome.tabs.create({url: chrome.runtime.getURL('index.html')});
     },
     checkVRCCurrentSessionInVR() {
       fetch(`https://vrchat.com/api/1/users/${this.user_data.id}`)
@@ -828,6 +812,10 @@ export default {
             else
               this.no_session_dialog = true;
           })
+    },
+    confirmOpenVRCSession() {
+      this.openVRCCurrentSessionInVR();
+      this.no_session_dialog = false;
     },
     openVRCCurrentSessionInVR(location = null) {
       const url = location ? `vrchat://launch?ref=vrchat.com&id=${location}` : `vrchat://launch?ref=vrchat.com`;
@@ -898,7 +886,7 @@ export default {
       user.bioLinks = user.bioLinks ? user.bioLinks.filter(e => e) : [];
     },
     setLastLogin(user) {
-      user.last_login = moment(user.last_login).format('YYYY-MM-DD HH:mm:ss');
+      user.last_login = dayjs(user.last_login).format('YYYY-MM-DD HH:mm:ss');
     },
     setWorldIcon(user) {
       if (user.location && user.location !== 'offline') {
@@ -982,10 +970,11 @@ export default {
     toggleFavoriteFriend() {
       this.friend_menu_item.favorited = !this.friend_menu_item.favorited;
 
-      this.port.postMessage({
-        type: 'toggleFavoriteFriend',
-        user_id: this.friend_menu_item.id
-      });
+      toggleFavoriteFriend(this.friend_menu_item.id)
+          .then(favorite_friends => this.favorite_friends = favorite_friends);
+    },
+    updateDrawerWidth() {
+      this.drawer_width = window.innerWidth;
     }
   }
 }
@@ -1007,6 +996,16 @@ export default {
 </style>
 
 <style scoped>
+.fab-top-left {
+  top: 16px;
+  left: 16px;
+}
+
+.fab-top-right {
+  top: 16px;
+  right: 16px;
+}
+
 .rotate {
   animation: linear rotate 2s infinite;
 }

@@ -1,3 +1,11 @@
+# 2.0.0
+
+Update:
+- Migrated the extension to Manifest V3 (background page replaced by a service worker)
+- Migrated to Vue 3, Vuetify 4 and Vite
+- Settings and favorite friends are now kept in the extension storage (migrated automatically)
+- Reconnects to VRChat automatically when logging in or out on vrchat.com
+
 # 1.5.3
 
 Added:

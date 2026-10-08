@@ -1,28 +1,24 @@
 <template>
   <v-card width="100" color="transparent" class="py-2 d-flex justify-center" flat>
     <v-badge
-        :value="friend.favorited"
-        color="orange darken-1"
+        :model-value="!!friend.favorited"
+        color="orange-darken-1"
         icon="star"
-        overlap
     >
       <v-img
           class="rounded"
           :src="friend.profilePicOverride ? friend.profilePicOverride : friend.currentAvatarThumbnailImageUrl"
           height="50"
           width="67"
+          cover
       >
         <template v-slot:placeholder>
-          <v-row
-              class="fill-height ma-0"
-              align="center"
-              justify="center"
-          >
+          <div class="d-flex fill-height align-center justify-center">
             <v-progress-circular
                 indeterminate
-                color="grey lighten-5"
+                color="grey-lighten-5"
             />
-          </v-row>
+          </div>
         </template>
       </v-img>
     </v-badge>
@@ -39,7 +35,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-
-</style>
