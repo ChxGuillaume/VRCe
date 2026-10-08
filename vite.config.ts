@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath, URL} from 'node:url';
 import {defineConfig, type Plugin} from 'vite';
 import vue from '@vitejs/plugin-vue';
-import vuetify from 'vite-plugin-vuetify';
+import ui from '@nuxt/ui/vite';
 import devReload from './build/dev-reload-plugin.ts';
 
 const root = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -41,7 +41,17 @@ export default defineConfig(({mode}) => {
         base: '',
         plugins: [
             vue(),
-            vuetify({autoImport: true}),
+            ui({
+                // The extension has no router, links are plain anchors.
+                router: false,
+                // Always dark, the `dark` class is set on <html>.
+                colorMode: false,
+                ui: {
+                    colors: {primary: 'aurora', secondary: 'cyan', neutral: 'zinc'}
+                },
+                // Bundle the icons used in the sources, extension pages must not fetch them from the Iconify API.
+                icon: {clientBundle: {scan: true}}
+            }),
             extensionManifest({devReloadPort}),
             devReloadPort ? devReload({port: devReloadPort}) : null
         ],

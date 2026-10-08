@@ -4,7 +4,7 @@ import {defineConfigWithVueTs, vueTsConfigs} from '@vue/eslint-config-typescript
 import globals from 'globals';
 
 export default defineConfigWithVueTs(
-    {ignores: ['dist/**', 'src/types/vrchat-api.generated.d.ts']},
+    {ignores: ['dist/**', 'src/types/vrchat-api.generated.d.ts', 'components.d.ts', 'auto-imports.d.ts']},
     js.configs.recommended,
     pluginVue.configs['flat/essential'],
     vueTsConfigs.recommended,
