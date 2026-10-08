@@ -47,7 +47,10 @@ export default defineConfig(({mode}) => {
                 // Always dark, the `dark` class is set on <html>.
                 colorMode: false,
                 ui: {
-                    colors: {primary: 'aurora', secondary: 'cyan', neutral: 'zinc'}
+                    colors: {primary: 'aurora', secondary: 'cyan', neutral: 'zinc'},
+                    // Dialog titles inherit the body size otherwise, and end up smaller than their description.
+                    modal: {slots: {title: 'font-display text-base'}},
+                    slideover: {slots: {title: 'font-display text-base'}}
                 },
                 // Bundle the icons used in the sources, extension pages must not fetch them from the Iconify API.
                 icon: {clientBundle: {scan: true}}
@@ -69,6 +72,8 @@ export default defineConfig(({mode}) => {
             sourcemap: mode === 'development',
             minify: mode !== 'development',
             modulePreload: false,
+            // Loaded from the extension package, not the network.
+            chunkSizeWarningLimit: 1500,
             rollupOptions: {
                 input: {
                     popup: root('./popup.html'),

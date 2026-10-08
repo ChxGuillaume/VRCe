@@ -18,7 +18,7 @@ Friends, Worlds, Events, Gallery, Moderation (Blocked/Muted Users)
 
 Requires Node.js 20.19+ (or 22.12+). First you need to install dependencies `npm ci`
 
-The extension is a Manifest V3 extension written in TypeScript, built with Vite, Vue 3 and Vuetify 4.
+The extension is a Manifest V3 extension written in TypeScript, built with Vite, Vue 3 and Nuxt UI 4 (Tailwind CSS 4).
 
 ## 🔎 Checks
 

@@ -88,7 +88,7 @@ export const RANKS: Record<RankKey, TrustRank> = {
 };
 
 // Friend list entries always have empty tags, so their rank is unknown (null).
-export function trustRankOf(tags: string[] | undefined): TrustRank | null {
+export function trustRankOf(tags: readonly string[] | undefined): TrustRank | null {
     if (!tags?.length) return null;
 
     if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted'))
@@ -102,10 +102,10 @@ export function trustRankOf(tags: string[] | undefined): TrustRank | null {
     return RANKS.visitor;
 }
 
-export const isVRCPlus = (tags: string[] | undefined): boolean => !!tags?.includes('system_supporter');
-export const isEarlyAdopter = (tags: string[] | undefined): boolean => !!tags?.includes('system_early_adopter');
+export const isVRCPlus = (tags: readonly string[] | undefined): boolean => !!tags?.includes('system_supporter');
+export const isEarlyAdopter = (tags: readonly string[] | undefined): boolean => !!tags?.includes('system_early_adopter');
 
-export function languagesOf(tags: string[] | undefined): string[] {
+export function languagesOf(tags: readonly string[] | undefined): string[] {
     return (tags || []).filter(tag => tag.startsWith('language_')).map(tag => tag.replace('language_', ''));
 }
 
@@ -188,6 +188,6 @@ export function formatNumber(value: number | undefined): string {
 }
 
 // `author_tag_*` tags of a world, without their prefix.
-export function authorTagsOf(tags: string[] | undefined): string[] {
+export function authorTagsOf(tags: readonly string[] | undefined): string[] {
     return (tags || []).filter(tag => tag.startsWith('author_tag_')).map(tag => tag.replace('author_tag_', ''));
 }
