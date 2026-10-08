@@ -44,7 +44,14 @@ Auto reload talks to a local server on port `35729`, set `VRCE_DEV_RELOAD_PORT` 
 
 Run `npm run build`
 
-Then the extension is built into the `dist` folder, zip its content to publish it.
+Then the extension is built into the `dist` folder.
+
+## 🚀 Publish on the Chrome Web Store
+
+Run `npm run package`
+
+It builds the extension, checks the manifest against the Chrome Web Store requirements and creates `artifacts/vrce-<version>.zip`, ready to upload from the [developer dashboard](https://chrome.google.com/webstore/devconsole).
+Bump the `version` in `package.json` before packaging a new release, the store rejects already published versions.
 
 # 🧾 License
 
