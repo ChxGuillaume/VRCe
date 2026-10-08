@@ -1,5 +1,7 @@
 import {MessageType} from '../shared/messages';
+import {getCurrentUser, isCloudflareError, isUnauthorized, PIPELINE_URL} from '../shared/vrchat-api';
 import {addEvent, getRecentEvents} from './events-db';
+import {parseEventContent} from './event-content';
 import {notifyDisconnected, notifyForEvent} from './notifications';
 
 const VRCHAT_URL = 'https://vrchat.com';
@@ -78,7 +80,7 @@ function closeSocket() {
 function createSocket(token) {
     closeSocket();
 
-    const ws = new WebSocket(`wss://vrchat.com/?authToken=${token}`);
+    const ws = new WebSocket(`${PIPELINE_URL}?authToken=${encodeURIComponent(token)}`);
     socket = ws;
 
     ws.onopen = () => {
@@ -88,7 +90,7 @@ function createSocket(token) {
         setOnlineStatus(true);
     };
 
-    ws.onmessage = (ev) => handleSocketMessage(ev, token);
+    ws.onmessage = (ev) => handleSocketMessage(ev, token).catch(e => console.error('Could not handle socket message', e));
 
     ws.onerror = (ev) => console.error('Socket error', ev);
 
@@ -107,7 +109,7 @@ function createSocket(token) {
     };
 }
 
-function handleSocketMessage(ev, token) {
+async function handleSocketMessage(ev, token) {
     const event = JSON.parse(ev.data);
 
     if (event.err) {
@@ -118,7 +120,7 @@ function handleSocketMessage(ev, token) {
 
     event.uid = crypto.randomUUID();
     event.date = new Date();
-    event.content = parseContent(event.content);
+    event.content = await parseEventContent(event.type, event.content);
 
     addEvent(event).catch(e => console.error('Could not store event', e));
     notifyForEvent(event).catch(e => console.error('Could not notify event', e));
@@ -126,28 +128,13 @@ function handleSocketMessage(ev, token) {
     broadcast({type: MessageType.NEW_EVENTS, event});
 }
 
-function parseContent(content) {
-    try {
-        return JSON.parse(content);
-    } catch {
-        return content;
-    }
-}
-
 async function checkSession() {
     try {
-        const response = await fetch(`${VRCHAT_URL}/api/1/auth/user`, {credentials: 'include'});
-
-        if (response.status === 503) {
-            console.warn('Cloudflare error?!');
-            return;
-        }
-
-        const data = await response.json().catch(() => ({}));
-
-        if (response.status === 401 || data.error?.status_code === 401) await setOnlineStatus(false);
+        await getCurrentUser();
     } catch (e) {
-        console.warn('Could not check VRChat session', e);
+        if (isUnauthorized(e)) await setOnlineStatus(false);
+        else if (isCloudflareError(e)) console.warn('Cloudflare error?!');
+        else console.warn('Could not check VRChat session', e);
     }
 }
 

@@ -590,6 +590,17 @@ import GalleryTab from "./PopupTabs/GalleryTab.vue";
 import FriendPicture from "./PopupComponents/FriendPicture.vue";
 import {getFavoriteFriends, toggleFavoriteFriend} from '../shared/storage';
 import {MessageType, sendToBackground} from '../shared/messages';
+import {
+  getCurrentUser,
+  getFriends,
+  getUser,
+  getUserWithProfile,
+  getWorld,
+  inviteMyselfTo,
+  isCloudflareError,
+  isUnauthorized,
+  logout
+} from '../shared/vrchat-api';
 
 export default {
   name: 'Popup',
@@ -635,7 +646,8 @@ export default {
     sortedFriends() {
       const filteredFriends = this.friends.filter(e => {
         const displayName = e.displayName.toLowerCase();
-        const userName = e.username.toLowerCase();
+        // Friend list entries don't carry the username anymore.
+        const userName = (e.username || '').toLowerCase();
         const searchField = this.friend_search ? this.friend_search.toLowerCase() : '';
 
         return displayName.includes(searchField) || userName.includes(searchField);
@@ -690,25 +702,22 @@ export default {
     fetchUser() {
       this.fetching = true;
 
-      fetch('https://vrchat.com/api/1/auth/user')
-          .then(response => {
-            if (response.status === 503)
-              this.cloudflare_error = true;
-            else
-              return response.json();
-          })
+      getCurrentUser()
           .then(data => {
-            this.fetching = false;
+            this.logged_in = true;
+            this.user_data = data;
 
-            if (!data.error) {
-              this.logged_in = true;
-              this.user_data = data;
-
-              this.fetchFriends();
-            } else if (data.error.status_code === 401) {
+            this.fetchFriends();
+          })
+          .catch(e => {
+            if (isCloudflareError(e))
+              this.cloudflare_error = true;
+            else if (isUnauthorized(e))
               this.need_login_form = true;
-            }
-          });
+            else
+              console.error('Could not fetch the current user', e);
+          })
+          .finally(() => this.fetching = false);
     },
     fetchUserDetails(ev, friend_id) {
       if (ev && ['I', 'SPAN'].includes(ev.target.nodeName))
@@ -717,8 +726,7 @@ export default {
       this.drawer = true;
       this.user_details = {};
 
-      fetch(`https://vrchat.com/api/1/users/${friend_id}`)
-          .then(response => response.json())
+      getUserWithProfile(friend_id)
           .then(data => {
             this.setUserData(data);
             this.user_details = data;
@@ -726,11 +734,11 @@ export default {
             if (data.worldId && !['offline'].includes(data.worldId))
               this.fetchWorld(data.worldId, true);
           })
+          .catch(e => console.error(`Could not fetch user ${friend_id}`, e));
     },
     fetchWorld(worldId, showDrawer = false) {
       if (worldId !== 'private') {
-        fetch(`https://vrchat.com/api/1/worlds/${worldId}`)
-            .then(response => response.json())
+        getWorld(worldId)
             .then(data => {
               data.created_at = dayjs(data.created_at).format('YYYY-MM-DD HH:mm:ss');
               data.updated_at = dayjs(data.updated_at).format('YYYY-MM-DD HH:mm:ss');
@@ -750,6 +758,7 @@ export default {
               this.user_details.world = data;
               if (showDrawer) this.refreshDrawer();
             })
+            .catch(e => console.error(`Could not fetch world ${worldId}`, e));
       } else {
         this.user_details.world = {
           name: 'Private World',
@@ -760,8 +769,7 @@ export default {
     fetchFriends(offline = false, offset = 0) {
       const count = 100;
 
-      fetch(`https://vrchat.com/api/1/auth/user/friends?offline=${offline}&n=${count}&offset=${offset}`)
-          .then(res => res.json())
+      getFriends({offline, n: count, offset})
           .then(data => {
             data.forEach(friend => this.setUserData(friend));
 
@@ -779,16 +787,15 @@ export default {
             else if (!offline && data.length !== count)
               this.fetchFriends(true, 0);
           })
+          .catch(e => console.error('Could not fetch friends', e));
     },
     sendInviteToInstance(location) {
-      fetch(`https://vrchat.com/api/1/instances/${location}/invite`, {
-        method: 'POST'
-      }).then(() => this.invite_sent = true)
+      inviteMyselfTo(location)
+          .then(() => this.invite_sent = true)
+          .catch(e => console.error(`Could not invite myself to ${location}`, e));
     },
     logoutFromVRChat() {
-      fetch('https://vrchat.com/api/1/logout', {
-        method: 'PUT'
-      }).then(() => {
+      logout().catch(e => console.error('Could not log out', e)).then(() => {
         this.logged_in = false;
         this.user_data = {};
         this.friends = [];
@@ -804,14 +811,14 @@ export default {
       chrome.tabs.create({url: chrome.runtime.getURL('index.html')});
     },
     checkVRCCurrentSessionInVR() {
-      fetch(`https://vrchat.com/api/1/users/${this.user_data.id}`)
-          .then(res => res.json())
+      getUser(this.user_data.id)
           .then(data => {
             if (data.location !== 'offline')
               this.openVRCCurrentSessionInVR(data.location);
             else
               this.no_session_dialog = true;
           })
+          .catch(e => console.error('Could not fetch the current session', e));
     },
     confirmOpenVRCSession() {
       this.openVRCCurrentSessionInVR();
@@ -822,7 +829,7 @@ export default {
       chrome.tabs.create({url});
     },
     setUserData(user) {
-      if (this.user_data.activeFriends.includes(user.id))
+      if (this.user_data.activeFriends?.includes(user.id))
         user.location = '';
 
       this.setRank(user);
@@ -838,7 +845,8 @@ export default {
       user.location_region = this.getLocationRegion(user.location);
     },
     setRank(user) {
-      const tags = user.tags
+      // Friend list entries always come with empty tags, they all end up as Visitor.
+      const tags = user.tags || [];
 
       if (tags.includes('system_legend') && tags.includes('system_trust_legend') && tags.includes('system_trust_trusted')) {
         user.rank = {color: '#FF69B4', name: 'Legend', power: 0}
@@ -859,7 +867,7 @@ export default {
     setStatus(user) {
       if (!user.location)
         user.status = {color: '#ebd23b', name: 'Active', power: 1, light: true};
-      else if (user.state && user.state === 'offline')
+      else if (user.state === 'offline' || user.location === 'offline')
         user.status = {color: '#CCCCCC', name: 'Offline', power: 0, light: true};
       else
         switch (user.status) {

@@ -124,6 +124,7 @@
 
 <script>
 import FriendPicture from '../PopupComponents/FriendPicture.vue';
+import {getInstance, inviteMyselfTo} from '../../shared/vrchat-api';
 
 export default {
   name: 'WorldsTab',
@@ -220,17 +221,17 @@ export default {
       if (!this.instances_data_fetched.find(e => e === location)) {
         this.instances_data_fetched.push(location);
 
-        fetch(`https://vrchat.com/api/1/instances/${location}`)
-            .then(response => response.json())
+        getInstance(location)
             .then(data => {
               this.instances_data.push(data);
             })
+            .catch(e => console.error(`Could not fetch instance ${location}`, e));
       }
     },
     sendInviteToInstance(instance) {
-      fetch(`https://vrchat.com/api/1/instances/${instance.location}/invite`, {
-        method: 'POST'
-      }).then(() => this.invite_sent = true)
+      inviteMyselfTo(instance.location)
+          .then(() => this.invite_sent = true)
+          .catch(e => console.error(`Could not invite myself to ${instance.location}`, e));
     },
     isShowingFriends(instance) {
       return this.toggled_instances[instance.location] ?? instance.show_friends;

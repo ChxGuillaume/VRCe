@@ -124,7 +124,7 @@
                 <v-col cols="9" class="text-center">
                   <h3 v-if="event.type === 'friend-location'" class="text-body-large">
                     <span v-if="event.content.user">{{ event.content.user.displayName }}</span>
-                    <span v-if="event.content.world.name" class="d-block mt-1 text-body-small">
+                    <span v-if="event.content.world?.name" class="d-block mt-1 text-body-small">
                       {{ event.content.world.name }}
                     </span>
                     <span v-else class="d-block mt-1">Private</span>
@@ -142,10 +142,10 @@
                     <span class="d-block mt-1">
                       {{ event.content.senderUsername }}
                     </span>
-                    <span v-if="event.content.details.requestMessage" class="d-block mt-1 text-body-small">
+                    <span v-if="event.content.details?.requestMessage" class="d-block mt-1 text-body-small">
                       {{ event.content.details.requestMessage }}
                     </span>
-                    <span v-if="event.content.details.responseMessage" class="d-block mt-1 text-body-small">
+                    <span v-if="event.content.details?.responseMessage" class="d-block mt-1 text-body-small">
                       {{ event.content.details.responseMessage }}
                     </span>
                   </h3>
@@ -193,6 +193,7 @@
 import dayjs from 'dayjs';
 import PreviousUserChanges from './EventsTab/PreviousUserChanges.vue';
 import {MessageType, subscribeToEvents} from '../../shared/messages';
+import {getUserWithProfile, userImageUrl} from '../../shared/vrchat-api';
 
 export default {
   name: 'EventsTab',
@@ -229,7 +230,6 @@ export default {
       ],
       search: '',
       users_fetched: [],
-      fetched_users_ids: [],
       show_changes_items: null,
       unsubscribe: null
     }
@@ -274,6 +274,10 @@ export default {
       return Math.ceil(this.searchedEvents.length / this.event_page_length)
     }
   },
+  created() {
+    // Pending user requests by id, not reactive on purpose.
+    this.user_requests = new Map();
+  },
   mounted() {
     this.loadTypesShown();
 
@@ -297,13 +301,11 @@ export default {
   methods: {
     eventImageSrc(event) {
       if (['friend-add', 'friend-delete', 'friend-online', 'friend-active', 'friend-offline', 'friend-update', 'user-update'].includes(event.type) && event.content.user)
-        return event.content.user.profilePicOverride
-            ? event.content.user.profilePicOverride
-            : event.content.user.currentAvatarThumbnailImageUrl;
+        return userImageUrl(event.content.user);
       else if (event.type === 'friend-location' && event.content.location === 'private')
         return 'https://assets.vrchat.com/www/images/default_private_image.png';
       else if (event.type === 'friend-location')
-        return event.content.world.thumbnailImageUrl;
+        return event.content.world?.thumbnailImageUrl;
     },
     loadTypesShown() {
       if (localStorage.getItem('popup-events-types-shown'))
@@ -323,24 +325,15 @@ export default {
       }
     },
     setEventMissingUser(event) {
-      event.content.user = this.friends.find(friend => friend.id === event.content.userId);
+      const userId = event.content.userId;
+
+      event.content.user = this.friends.find(friend => friend.id === userId)
+          || this.users_fetched.find(user => user.id === userId);
 
       if (!event.content.user)
-        event.content.user = this.users_fetched.find(friend => friend.id === event.content.userId);
-
-      if (event.content.user)
-        return;
-
-      if (!this.fetched_users_ids.includes(event.content.userId))
-        this.fetchUser(event.content.userId)
-            .then(data => {
-              event.content.user = data;
-            });
-      else
-        // The user is already being fetched for another event, wait for it.
-        setTimeout(() => {
-          this.setEventMissingUser(event);
-        }, 100);
+        this.fetchUser(userId).then(user => {
+          if (user) event.content.user = user;
+        });
     },
     setEventTypeUpdate(event) {
       const user = event.content.user;
@@ -374,18 +367,20 @@ export default {
         });
       }
     },
+    // One request per user, shared by every event about that user.
     fetchUser(user_id) {
-      this.fetched_users_ids.push(user_id);
-
-      return new Promise((resolve) => {
-        fetch(`https://vrchat.com/api/1/users/${user_id}`)
-            .then(response => response.json())
+      if (!this.user_requests.has(user_id))
+        this.user_requests.set(user_id, getUserWithProfile(user_id)
             .then(data => {
               this.users_fetched.push(data);
-              resolve(data);
+              return data;
             })
-            .catch(() => this.fetchUser(user_id))
-      })
+            .catch(e => {
+              console.error(`Could not fetch user ${user_id}`, e);
+              return null;
+            }));
+
+      return this.user_requests.get(user_id);
     },
     getBackgroundColor(type) {
       switch (type) {

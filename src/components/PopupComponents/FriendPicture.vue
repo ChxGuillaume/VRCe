@@ -7,7 +7,7 @@
     >
       <v-img
           class="rounded"
-          :src="friend.profilePicOverride ? friend.profilePicOverride : friend.currentAvatarThumbnailImageUrl"
+          :src="userImageUrl(friend)"
           height="50"
           width="67"
           cover
@@ -26,6 +26,8 @@
 </template>
 
 <script>
+import {userImageUrl} from '../../shared/vrchat-api';
+
 export default {
   props: {
     friend: {
@@ -33,5 +35,8 @@ export default {
       required: true,
     },
   },
+  methods: {
+    userImageUrl
+  }
 }
 </script>

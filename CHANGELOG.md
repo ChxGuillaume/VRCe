@@ -5,6 +5,21 @@ Update:
 - Migrated to Vue 3, Vuetify 4 and Vite
 - Settings and favorite friends are now kept in the extension storage (migrated automatically)
 - Reconnects to VRChat automatically when logging in or out on vrchat.com
+- Updated API calls to the current VRChat API (https://vrchat.community):
+  - Events now come from the VRChat pipeline (pipeline.vrchat.cloud)
+  - Profiles (bio, links, icon, avatar thumbnail) are loaded from the new profile endpoint
+  - Joining an instance uses the new self invite endpoint
+  - Icon changes go through the profile endpoint
+  - Notification messages show the request/invite messages again
+  - Boop and message notifications
+  - New moderation types (chat mute, interactions)
+
+Removed:
+- Setting a gallery picture as profile picture (no longer supported by VRChat)
+
+Fix:
+- Friend location events show the world again
+- User lookups in events no longer retry forever on errors
 
 # 1.5.3
 

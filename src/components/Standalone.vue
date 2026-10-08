@@ -184,25 +184,6 @@
                       </template>
                     </v-img>
                   </template>
-                  <template v-slot:item.profilePicOverride="{ item }">
-                    <v-img
-                        v-if="item.profilePicOverride"
-                        :src="item.profilePicOverride"
-                        class="rounded"
-                        width="200"
-                        min-height="150"
-                        cover
-                    >
-                      <template v-slot:placeholder>
-                        <v-row class="fill-height ma-0 align-center justify-center">
-                          <v-progress-circular
-                              indeterminate
-                              color="grey-lighten-5"
-                          />
-                        </v-row>
-                      </template>
-                    </v-img>
-                  </template>
                   <template v-slot:item.badges="{ item }">
                     <v-img
                         v-if="item.tags.includes('system_early_adopter')"
@@ -347,6 +328,15 @@
 
 <script>
 import dayjs from 'dayjs';
+import {
+  getCurrentUser,
+  getUserWithProfile,
+  getWorld,
+  isCloudflareError,
+  isUnauthorized,
+  logout,
+  withProfile
+} from '../shared/vrchat-api';
 import PlayerModerationTab from './StandaloneTabs/PlayerModerationTab.vue';
 import PersonalInfosTab from './StandaloneTabs/PersonalInfosTab.vue';
 import earlyAdopterBadge from '../assets/early_adopter.png';
@@ -363,7 +353,6 @@ export default {
       {title: 'World', align: 'start', key: 'worldId', sortable: false},
       {title: 'Avatar Icon', key: 'userIcon', sortable: false},
       {title: 'Avatar', key: 'avatar', sortable: false},
-      {title: 'Picture', key: 'profilePicOverride', sortable: false},
       {title: 'Username', key: 'username'},
       {title: 'Display Name', key: 'displayName'},
       {title: 'Badges', key: 'badges', sortable: false},
@@ -448,29 +437,27 @@ export default {
       this.need_login_form = false;
       this.need_visit_vrc_home_form = false;
 
-      fetch('https://vrchat.com/api/1/auth/user')
-          .then(response => {
-            if (response.status === 503)
+      getCurrentUser()
+          .then(withProfile)
+          .then(data => {
+            this.setUserData(data);
+            this.user_data = data;
+
+            this.fetchFriends();
+          })
+          .catch(e => {
+            if (isCloudflareError(e))
               this.need_visit_vrc_home_form = true;
-            else if (response.status === 401)
+            else if (isUnauthorized(e))
               this.need_login_form = true;
             else
-              return response.json();
-          })
-          .then(data => {
-            if (data) {
-              this.setUserData(data);
-              this.user_data = data;
-
-              this.fetchFriends();
-            }
+              console.error('Could not fetch the current user', e);
           });
     },
     fetchFriends() {
       this.friends = [];
-      for (const friend of this.user_data.friends) {
-        fetch(`https://vrchat.com/api/1/users/${friend}`)
-            .then(response => response.json())
+      for (const friend of this.user_data.friends || []) {
+        getUserWithProfile(friend)
             .then(data => {
               this.setUserData(data);
               this.friends.push(data);
@@ -478,14 +465,15 @@ export default {
               if (data.worldId && !['private', 'offline'].includes(data.worldId))
                 this.fetchWorld(data.worldId);
             })
+            .catch(e => console.warn(`Could not fetch friend ${friend}`, e));
       }
     },
     fetchWorld(worldId) {
-      fetch(`https://vrchat.com/api/1/worlds/${worldId}`)
-          .then(response => response.json())
+      getWorld(worldId)
           .then(data => {
             this.worlds[worldId] = data;
           })
+          .catch(e => console.warn(`Could not fetch world ${worldId}`, e));
     },
     setUserData(user) {
       this.setRank(user);
@@ -549,10 +537,10 @@ export default {
       }
     },
     setBioLinks(user) {
-      user.bioLinks = user.bioLinks.filter(e => e);
+      user.bioLinks = (user.bioLinks || []).filter(e => e);
     },
     setLanguages(user) {
-      user.languages = user.tags.filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
+      user.languages = (user.tags || []).filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
     },
     setLastLogin(user) {
       user.last_login = dayjs(user.last_login).format('YYYY-MM-DD HH:mm:ss');
@@ -577,9 +565,7 @@ export default {
       })
     },
     logoutFromVRChat() {
-      fetch('https://vrchat.com/api/1/logout', {
-        method: 'PUT'
-      }).then(() => {
+      logout().catch(e => console.warn('Logout failed', e)).then(() => {
         this.user_data = {};
         this.friends = [];
         this.fetchUser();

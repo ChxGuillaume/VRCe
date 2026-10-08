@@ -71,13 +71,11 @@
             sm="4"
             md="3"
             class="text-center"
-            style="position: relative; cursor: pointer"
+            style="position: relative"
         >
           <div
-              class="d-inline-block pa-1 rounded"
-              :class="{ 'bg-green-darken-2': picture.current, 'bg-grey-darken-2': !picture.current }"
-              style="position: relative; cursor: pointer"
-              @click="changePicture($event, picture.url)"
+              class="d-inline-block pa-1 rounded bg-grey-darken-2"
+              style="position: relative"
           >
             <v-btn icon size="x-small" position="absolute" class="deleteBtn" color="red" @click.stop="delete_file_id = picture.id">
               <v-icon size="small">delete</v-icon>
@@ -129,6 +127,13 @@
 </template>
 
 <script>
+import {deleteFile, getFiles, getProfile, updateProfile} from '../../shared/vrchat-api';
+
+const fileId = (url) => url?.match(/(file_[^/]+)/)?.[1];
+
+// Image of the latest version of a file.
+const fileUrl = (file) => `https://api.vrchat.cloud/api/1/file/${file.id}/${file.versions?.at(-1)?.version ?? 1}`;
+
 export default {
   name: 'GalleryTab',
   emits: ['new-user-data'],
@@ -142,6 +147,8 @@ export default {
     return {
       icons: [],
       pictures: [],
+      // The current user no longer carries its icon, it comes from its profile.
+      current_icon: '',
       show_icons: true,
       show_pictures: true,
       delete_file_id: ''
@@ -149,87 +156,58 @@ export default {
   },
   computed: {
     Icons() {
-      const icons = this.icons.slice();
+      const currentIconId = fileId(this.current_icon);
 
-      icons.forEach(e => e.current = e.url.match(/(file_.*?)\//)[1] === this.user_data.userIcon.match(/(file_.*?)\//)[1]);
-
-      return icons;
+      return this.icons.map(icon => ({...icon, current: !!currentIconId && fileId(icon.url) === currentIconId}));
     },
     Pictures() {
-      const pictures = this.pictures.slice();
-
-      pictures.forEach(e => e.current = e.url.match(/(file_.*?)\//)[1] === this.user_data.profilePicOverride.match(/(file_.*?)\//)[1]);
-
-      return pictures;
+      return this.pictures;
     }
   },
   mounted() {
+    this.fetchCurrentIcon();
     this.fetchIcons();
     this.fetchPictures();
   },
   methods: {
+    fetchCurrentIcon() {
+      getProfile(this.user_data.id)
+          .then(profile => this.current_icon = profile.userIcon || '')
+          .catch(e => console.error('Could not fetch the current icon', e));
+    },
     fetchIcons() {
-      fetch('https://vrchat.com/api/1/files?tag=icon&n=100')
-          .then(res => res.json())
-          .then((data) => {
-            data.forEach(e => {
-              e.current = false;
-              e.url = `https://api.vrchat.cloud/api/1/file/${e.id}/1`;
-            });
-
-            this.icons = data;
-          })
+      getFiles('icon')
+          .then(data => this.icons = data.map(file => ({...file, url: fileUrl(file)})))
+          .catch(e => console.error('Could not fetch icons', e));
     },
     fetchPictures() {
-      fetch('https://vrchat.com/api/1/files?tag=gallery&n=100')
-          .then(res => res.json())
-          .then((data) => {
-            data.forEach(e => {
-              e.current = false;
-              e.url = `https://api.vrchat.cloud/api/1/file/${e.id}/1`;
-            });
-
-            this.pictures = data;
-          })
+      getFiles('gallery')
+          .then(data => this.pictures = data.map(file => ({...file, url: fileUrl(file)})))
+          .catch(e => console.error('Could not fetch gallery pictures', e));
     },
     changeIcon(ev, url) {
-      if (!ev.target.classList.contains('v-icon')
-          && !ev.target.classList.contains('v-btn')
-          && !ev.target.classList.contains('v-btn__content'))
-        fetch(`https://vrchat.com/api/1/users/${this.user_data.id}`, {
-          'headers': {'content-type': 'application/json;charset=UTF-8'},
-          'body': JSON.stringify({'userIcon': url}),
-          'method': 'PUT'
-        })
-            .then(res => res.json())
-            .then(data => {
-              this.$emit('new-user-data', data);
-            });
-    },
-    changePicture(ev, url) {
-      if (!ev.target.classList.contains('v-icon')
-          && !ev.target.classList.contains('v-btn')
-          && !ev.target.classList.contains('v-btn__content'))
-        fetch(`https://vrchat.com/api/1/users/${this.user_data.id}`, {
-          'headers': {'content-type': 'application/json;charset=UTF-8'},
-          'body': JSON.stringify({'profilePicOverride': url}),
-          'method': 'PUT'
-        })
-            .then(res => res.json())
-            .then(data => {
-              this.$emit('new-user-data', data);
-            });
+      if (ev.target.classList.contains('v-icon')
+          || ev.target.classList.contains('v-btn')
+          || ev.target.classList.contains('v-btn__content'))
+        return;
+
+      // Icons are profile fields now, the response is the public profile, not the user.
+      updateProfile(this.user_data.id, {userIcon: url})
+          .then(profile => {
+            this.current_icon = profile.userIcon || url;
+            this.$emit('new-user-data', {...this.user_data, userIcon: this.current_icon});
+          })
+          .catch(e => console.error('Could not change the icon', e));
     },
     deleteFile() {
-      const iconIndex = this.icons.findIndex(e => e.id === this.delete_file_id);
-      const pictureIndex = this.pictures.findIndex(e => e.id === this.delete_file_id);
+      const fileId = this.delete_file_id;
 
-      fetch(`https://vrchat.com/api/1/file/${this.delete_file_id}`, {
-        method: 'DELETE'
-      }).then(() => {
-        if (iconIndex >= 0) this.icons.splice(iconIndex, 1);
-        if (pictureIndex >= 0) this.pictures.splice(pictureIndex, 1);
-      })
+      deleteFile(fileId)
+          .then(() => {
+            this.icons = this.icons.filter(e => e.id !== fileId);
+            this.pictures = this.pictures.filter(e => e.id !== fileId);
+          })
+          .catch(e => console.error(`Could not delete file ${fileId}`, e));
 
       this.delete_file_id = '';
     }

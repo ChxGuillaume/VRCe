@@ -48,24 +48,33 @@ async function vrcNotificationOptions(content) {
             notification.title = 'Join Invite';
             notification.message = `${content.senderUsername} invite you to ${details.worldName}`;
             notification.iconUrl = chrome.runtime.getURL('icons/join-invite.png');
+            notification.contextMessage = details.inviteMessage || '';
             break;
         case 'requestInvite':
             notification.title = 'Join Request';
             notification.message = `${content.senderUsername} wants to join you`;
             notification.iconUrl = chrome.runtime.getURL('icons/join-request.png');
-            notification.contextMessage = details.inviteMessage || '';
+            notification.contextMessage = details.requestMessage || '';
             break;
         case 'inviteResponse':
         case 'requestInviteResponse':
             notification.title = 'Reply';
             notification.message = `${content.senderUsername} replied to you`;
             notification.iconUrl = chrome.runtime.getURL('icons/reply.png');
-            notification.contextMessage = details.responseMessage || '';
+            notification.contextMessage = details.responseMessage || details.requestMessage || '';
             break;
         case 'friendRequest':
             notification.title = 'Friend Invite';
             notification.message = `${content.senderUsername}`;
             notification.iconUrl = chrome.runtime.getURL('icons/friend-add.png');
+            break;
+        case 'boop':
+            notification.title = 'Boop';
+            notification.message = `${content.senderUsername} booped you`;
+            break;
+        case 'message':
+            notification.title = 'Message';
+            notification.message = `${content.senderUsername}: ${content.message}`;
             break;
     }
 

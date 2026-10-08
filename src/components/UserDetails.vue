@@ -180,6 +180,7 @@
 
 <script>
 import dayjs from 'dayjs';
+import {getUserWithProfile, getWorld} from '../shared/vrchat-api';
 
 export default {
   name: 'UserDetails',
@@ -205,8 +206,7 @@ export default {
       this.dialog = true;
       this.friend = {};
 
-      fetch(`https://vrchat.com/api/1/users/${id}`)
-          .then(response => response.json())
+      getUserWithProfile(id)
           .then(data => {
             this.setUserData(data);
             this.friend = data;
@@ -214,14 +214,15 @@ export default {
             if (data.worldId && !['private', 'offline'].includes(data.worldId))
               this.fetchWorld(data.id, data.worldId);
           })
+          .catch(e => console.warn(`Could not fetch user ${id}`, e));
     },
     fetchWorld(userId, worldId) {
-      fetch(`https://vrchat.com/api/1/worlds/${worldId}`)
-          .then(response => response.json())
+      getWorld(worldId)
           .then(data => {
             // Go through the reactive proxy, and ignore late answers for a previously opened user
             if (this.friend.id === userId) this.friend.world = data;
           })
+          .catch(e => console.warn(`Could not fetch world ${worldId}`, e));
     },
     setUserData(user) {
       this.setRank(user);
@@ -285,10 +286,10 @@ export default {
       }
     },
     setBioLinks(user) {
-      user.bioLinks = user.bioLinks.filter(e => e);
+      user.bioLinks = (user.bioLinks || []).filter(e => e);
     },
     setLanguages(user) {
-      user.langagues = user.tags.filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
+      user.langagues = (user.tags || []).filter(e => e.startsWith('language_')).map(e => e.replace('language_', ''));
     },
     setLastLogin(user) {
       if (!user.last_login) user.last_login = 'Unavailable';

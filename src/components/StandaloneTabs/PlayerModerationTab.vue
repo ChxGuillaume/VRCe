@@ -65,6 +65,7 @@
 <script>
 import dayjs from 'dayjs';
 import UserDetails from '../UserDetails.vue';
+import {getPlayerModerations} from '../../shared/vrchat-api';
 
 export default {
   name: 'PlayerModerationTab',
@@ -96,7 +97,7 @@ export default {
       return this.playerModerationOrdered
           .filter(e =>
               (!this.type_filter.length ^ this.type_filter.includes(e.type))
-              && (e.targetDisplayName.toLowerCase().includes((this.name_filter || '').toLowerCase()))
+              && ((e.targetDisplayName || '').toLowerCase().includes((this.name_filter || '').toLowerCase()))
           )
     },
     playerModerationTypes () {
@@ -122,17 +123,14 @@ export default {
   },
   methods: {
     getPlayerModeration() {
-      fetch('https://vrchat.com/api/1/auth/user/playermoderations')
-          .then(res => res.json())
+      getPlayerModerations()
           .then(data => {
-            if (!data.error) {
-              data.forEach(e => this.updateRow(e));
+            data.forEach(e => this.updateRow(e));
 
-              this.player_moderation = data;
-            }
-
-            this.loading = false
+            this.player_moderation = data;
           })
+          .catch(e => console.warn('Could not fetch player moderations', e))
+          .finally(() => this.loading = false);
     },
     updateRow(row) {
       this.setIcon(row);
@@ -146,7 +144,23 @@ export default {
           break;
         case 'unmute':
           row.icon_text = 'Unmute';
-          row.icon = 'volume_on';
+          row.icon = 'volume_up';
+          break;
+        case 'muteChat':
+          row.icon_text = 'Mute Chat';
+          row.icon = 'speaker_notes_off';
+          break;
+        case 'unmuteChat':
+          row.icon_text = 'Unmute Chat';
+          row.icon = 'chat';
+          break;
+        case 'interactOff':
+          row.icon_text = 'Interact Off';
+          row.icon = 'do_not_touch';
+          break;
+        case 'interactOn':
+          row.icon_text = 'Interact On';
+          row.icon = 'touch_app';
           break;
         case 'showAvatar':
           row.icon_text = 'Show Avatar';
@@ -162,7 +176,7 @@ export default {
           break;
         default:
           row.icon_text = row.type;
-          row.icon = row.type;
+          row.icon = 'help_outline';
       }
     },
     getTypeColor(type) {
@@ -177,6 +191,14 @@ export default {
           return 'orange';
         case 'block':
           return 'red';
+        case 'muteChat':
+          return 'deep-orange';
+        case 'unmuteChat':
+          return 'light-blue';
+        case 'interactOff':
+          return 'purple';
+        case 'interactOn':
+          return 'teal';
         default:
           return 'grey';
       }
