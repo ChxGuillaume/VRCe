@@ -2,7 +2,13 @@
 
 Update:
 - Migrated the extension to Manifest V3 (background page replaced by a service worker)
-- Migrated to Vue 3, Vuetify 4, Vite and TypeScript
+- Brand new dark design built with Nuxt UI:
+  - Popup: current user card, friends grouped by presence with favorites, quick join, context menu and a rich friend details panel
+  - Worlds: instance cards with friends, join and open in VRChat
+  - Events: timeline grouped by day, type filters, profile change diffs
+  - Gallery: set your icon or delete pictures from a grid
+  - Dashboard: sidebar layout, friends table with stats, filters and column picker, moderation history and profile page
+- Migrated to Vue 3, Nuxt UI, Vite and TypeScript
 - Settings and favorite friends are now kept in the extension storage (migrated automatically)
 - Reconnects to VRChat automatically when logging in or out on vrchat.com
 - Updated API calls to the current VRChat API (https://vrchat.community):

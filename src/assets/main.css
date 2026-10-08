@@ -1,0 +1,91 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/space-grotesk";
+
+@source "../";
+
+@theme static {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Geist Variable", ui-sans-serif, sans-serif;
+
+  /* VRCe brand: electric violet. */
+  --color-aurora-50: #f3f1ff;
+  --color-aurora-100: #ebe5ff;
+  --color-aurora-200: #d9ceff;
+  --color-aurora-300: #bea6ff;
+  --color-aurora-400: #9f75ff;
+  --color-aurora-500: #843dff;
+  --color-aurora-600: #7916ff;
+  --color-aurora-700: #6b04fd;
+  --color-aurora-800: #5a03d5;
+  --color-aurora-900: #4b05ad;
+  --color-aurora-950: #2c0076;
+
+  /* VRChat presence colors. */
+  --color-presence-join-me: #42caff;
+  --color-presence-online: #4ade80;
+  --color-presence-ask-me: #fb923c;
+  --color-presence-busy: #f43f5e;
+  --color-presence-active: #facc15;
+  --color-presence-offline: #71717a;
+
+  /* VRChat trust rank colors. */
+  --color-rank-visitor: #cccccc;
+  --color-rank-new-user: #1778ff;
+  --color-rank-user: #2bcf5c;
+  --color-rank-known: #ff7b42;
+  --color-rank-trusted: #8143e6;
+  --color-rank-veteran: #5d88bb;
+  --color-rank-legend: #ff69b4;
+}
+
+/* A deeper, slightly blue tinted night than the stock zinc surfaces. */
+.dark {
+  --ui-bg: #0a0a0f;
+  --ui-bg-muted: #111118;
+  --ui-bg-elevated: #16161f;
+  --ui-bg-accented: #1e1e29;
+  --ui-bg-inverted: var(--ui-color-neutral-100);
+  --ui-border: #22222e;
+  --ui-border-muted: #1a1a24;
+  --ui-border-accented: #2e2e3d;
+  --ui-primary: var(--ui-color-primary-400);
+  --ui-radius: 0.625rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--ui-bg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle brand glow used behind headers and hero areas. */
+.vrce-glow {
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in oklab, var(--color-aurora-600) 22%, transparent), transparent 60%),
+    radial-gradient(90% 70% at 100% 0%, color-mix(in oklab, var(--color-cyan-500) 14%, transparent), transparent 60%);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ui-border-accented);
+  border: 3px solid var(--ui-bg);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-aurora-700);
+}
